@@ -666,11 +666,11 @@ const CSVViewerApp = () => {
           {/* テーブル表示 */}
           {viewMode === 'table' && (
             <>
-              <div className="overflow-x-auto border rounded">
+              <div className="overflow-x-auto border rounded max-h-[70vh]">
                 <table className="min-w-full bg-white">
-                  <thead>
+                  <thead className="sticky top-0 z-20 text-nowrap">
                     <tr className="bg-gray-100">
-                      <th className="py-2 px-3 border-b sticky left-0 bg-gray-100 z-10">No.</th>
+                      <th className="py-2 px-3 border-b sticky left-0 bg-gray-100 z-30">No.</th>
                       {columnOrder
                         .filter(header => selectedColumns.includes(header))
                         .map((header, index) => (
@@ -686,7 +686,11 @@ const CSVViewerApp = () => {
                             onDrop={(e) => handleDrop(e, header)}
                             onDragEnd={handleDragEnd}
                           >
-                            <div className="flex items-center group">
+                            <div className="flex items-center group relative">
+                              <div
+                                className="absolute right-0 w-2 h-full cursor-col-resize"
+                                onMouseDown={(e) => handleMouseDown(e, header)}
+                              />
                               <div
                                 className="mr-2 text-gray-400 cursor-move px-1 rounded hover:bg-gray-300 inline-flex items-center justify-center"
                                 title="ドラッグして列の順序を変更"

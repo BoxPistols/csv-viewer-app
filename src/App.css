@@ -1,11 +1,10 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  /* text-align: center; */
-}
+/* Existing styles... */
 
-li {
-  list-style: none;
-  padding: 0;
+.sticky-header {
+  position: sticky;
+  top: 0;
+  background-color: white;
+  /* Ensure the background is white */
+  z-index: 10;
+  /* Ensure it stays above other content */
 }
