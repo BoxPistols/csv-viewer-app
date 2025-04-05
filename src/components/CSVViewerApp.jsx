@@ -594,7 +594,7 @@ const CSVViewerApp = () => {
                 >
                   列の表示設定
                 </button>
-                <div id="column-selector" className="hidden absolute right-0 mt-1 bg-white border rounded shadow-lg p-2 z-10 max-h-64 overflow-y-auto w-64">
+                <div id="column-selector" className="hidden absolute right-0 mt-1 bg-white border rounded shadow-lg p-2 z-30 max-h-64 overflow-y-auto w-64">
                   <div className="flex justify-between mb-2 pb-2 border-b">
                     <button
                       className="text-xs px-2 py-1 bg-blue-100 rounded"
