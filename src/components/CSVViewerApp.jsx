@@ -16,13 +16,14 @@ const CSVViewerApp = () => {
   const [totalRows, setTotalRows] = useState(0);
   const [processingStatus, setProcessingStatus] = useState('');
   const [fileName, setFileName] = useState('');
-  
+
   // 新しい状態変数
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
   const [columnOrder, setColumnOrder] = useState([]);
   const [showAllRows, setShowAllRows] = useState(false);
-  
+  const [isDragActive, setIsDragActive] = useState(false);
+
   const fileInputRef = useRef(null);
   const rowsPerPageOptions = [10, 25, 50, 100];
 
@@ -66,6 +67,27 @@ const CSVViewerApp = () => {
     }
   };
 
+  // スタイルの追加
+  useEffect(() => {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'csv-viewer-drag-styles';
+    styleEl.innerHTML = `
+      .column-dragging {
+        opacity: 0.6;
+      }
+      .column-drag-over {
+        background-color: #e0f2fe;
+        border-left: 2px solid #3b82f6;
+      }
+    `;
+    document.head.appendChild(styleEl);
+
+    return () => {
+      const existingStyle = document.getElementById('csv-viewer-drag-styles');
+      if (existingStyle) existingStyle.remove();
+    };
+  }, []);
+
   // ファイルアップロードハンドラー
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -83,10 +105,10 @@ const CSVViewerApp = () => {
 
     // FileReaderを使用してファイルを読み込む
     const reader = new FileReader();
-    
+
     reader.onload = (e) => {
       const csvText = e.target.result;
-      
+
       // PapaParseでCSVを解析
       Papa.parse(csvText, {
         header: true,
@@ -102,36 +124,36 @@ const CSVViewerApp = () => {
         }
       });
     };
-    
+
     reader.onerror = () => {
       setError('ファイルの読み込みに失敗しました');
       setLoading(false);
     };
-    
+
     reader.readAsText(file, 'UTF-8');
   };
 
   // CSVデータの処理
   const processCSVData = (results, currentFileName) => {
     setProcessingStatus('データを処理中...');
-    
+
     try {
       // 総行数を記録
       setTotalRows(results.data.length);
-      
+
       // ヘッダー名を取得
       const headers = results.meta.fields || [];
-      
+
       // 保存された列設定を読み込む
       const savedColumns = loadColumnSettings(currentFileName);
-      
+
       // 保存された設定があれば使用、なければデフォルト（最初の10列）
       const defaultColumns = savedColumns || headers.slice(0, 10);
-      
+
       // 保存されたカラム順序を読み込む
       const savedOrder = loadColumnOrder(currentFileName);
       const initialOrder = savedOrder || [...headers];
-      
+
       setHeaders(headers);
       setSelectedColumns(defaultColumns);
       setColumnOrder(initialOrder);
@@ -159,15 +181,15 @@ const CSVViewerApp = () => {
   // ソート状態に基づいてデータをソート
   const getSortedData = (data) => {
     if (!sortConfig.key) return data;
-    
+
     return [...data].sort((a, b) => {
       // 数値の場合は数値としてソート
       if (!isNaN(a[sortConfig.key]) && !isNaN(b[sortConfig.key])) {
-        return sortConfig.direction === 'ascending' 
+        return sortConfig.direction === 'ascending'
           ? Number(a[sortConfig.key]) - Number(b[sortConfig.key])
           : Number(b[sortConfig.key]) - Number(a[sortConfig.key]);
       }
-      
+
       // 文字列の場合
       if (a[sortConfig.key] < b[sortConfig.key]) {
         return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -182,14 +204,14 @@ const CSVViewerApp = () => {
   // 検索機能
   useEffect(() => {
     if (data.length === 0) return;
-    
+
     if (searchTerm.trim() === '') {
       setFilteredData(data);
     } else {
       const filtered = data.filter(row => {
         if (searchColumn === 'all') {
           // すべての列を検索
-          return Object.values(row).some(value => 
+          return Object.values(row).some(value =>
             String(value).toLowerCase().includes(searchTerm.toLowerCase())
           );
         } else {
@@ -207,7 +229,7 @@ const CSVViewerApp = () => {
     const newColumns = selectedColumns.includes(header)
       ? selectedColumns.filter(col => col !== header)
       : [...selectedColumns, header];
-      
+
     setSelectedColumns(newColumns);
     saveColumnSettings(newColumns); // 設定を保存
   };
@@ -219,25 +241,84 @@ const CSVViewerApp = () => {
     saveColumnSettings(newColumns); // 設定を保存
   };
 
-  // ドラッグ関連のハンドラー
-  const handleDragStart = (e, index) => {
+  // ドラッグ関連の状態と処理
+  const [draggedColumn, setDraggedColumn] = useState(null);
+
+  // ドラッグ開始時の処理
+  const handleDragStart = (e, header, index) => {
+    setDraggedColumn(header);
     e.dataTransfer.setData('text/plain', index);
+    e.dataTransfer.effectAllowed = 'move';
+    // ドラッグ中のゴースト画像を設定（オプション）
+    const ghostElement = document.createElement('div');
+    ghostElement.textContent = header;
+    ghostElement.className = 'bg-blue-100 px-4 py-2 rounded opacity-70';
+    document.body.appendChild(ghostElement);
+    e.dataTransfer.setDragImage(ghostElement, 0, 0);
+    setTimeout(() => {
+      document.body.removeChild(ghostElement);
+    }, 0);
   };
 
-  const handleDragOver = (e) => {
+  // ドラッグ中のハンドラー
+  const handleDragOver = (e, header) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    // ドラッグ中のスタイル変更のためのクラス操作
+    const headerElements = document.querySelectorAll('th[data-draggable="true"]');
+    headerElements.forEach(el => {
+      if (el.getAttribute('data-header') === header) {
+        el.classList.add('bg-blue-100');
+      }
+    });
   };
 
-  const handleDrop = (e, dropIndex) => {
-    const dragIndex = Number(e.dataTransfer.getData('text/plain'));
-    const newOrder = [...columnOrder];
-    const [removed] = newOrder.splice(dragIndex, 1);
-    newOrder.splice(dropIndex, 0, removed);
-    
-    setColumnOrder(newOrder);
-    saveColumnOrder(newOrder); // 設定を保存
+  // ドラッグ離脱時の処理
+  const handleDragLeave = (e, header) => {
+    const headerElements = document.querySelectorAll('th[data-draggable="true"]');
+    headerElements.forEach(el => {
+      if (el.getAttribute('data-header') === header) {
+        el.classList.remove('bg-blue-100');
+      }
+    });
   };
-  
+
+  // ドロップ時の処理
+  const handleDrop = (e, targetHeader) => {
+    e.preventDefault();
+    const sourceIndex = columnOrder.findIndex(h => h === draggedColumn);
+    const targetIndex = columnOrder.findIndex(h => h === targetHeader);
+
+    if (sourceIndex !== -1 && targetIndex !== -1) {
+      const newOrder = [...columnOrder];
+      const [removed] = newOrder.splice(sourceIndex, 1);
+      newOrder.splice(targetIndex, 0, removed);
+
+      setColumnOrder(newOrder);
+      saveColumnOrder(newOrder); // 設定を保存
+    }
+
+    // スタイルをリセット
+    const headerElements = document.querySelectorAll('th[data-draggable="true"]');
+    headerElements.forEach(el => {
+      el.classList.remove('bg-blue-100');
+    });
+
+    setDraggedColumn(null);
+  };
+
+  // ドラッグ終了時の処理
+  const handleDragEnd = () => {
+    // スタイルをリセット
+    const headerElements = document.querySelectorAll('th[data-draggable="true"]');
+    headerElements.forEach(el => {
+      el.classList.remove('bg-blue-100');
+    });
+
+    setDraggedColumn(null);
+  };
+
   // 表示件数の変更
   const handleRowsPerPageChange = (value) => {
     const numValue = Number(value);
@@ -245,7 +326,7 @@ const CSVViewerApp = () => {
     setCurrentPage(1); // ページをリセット
     setShowAllRows(false);
   };
-  
+
   // 全件表示の切り替え
   const toggleShowAllRows = (checked) => {
     setShowAllRows(checked);
@@ -274,7 +355,7 @@ const CSVViewerApp = () => {
   // JSONエクスポート
   const exportJson = () => {
     if (filteredData.length === 0) return;
-    
+
     const jsonString = JSON.stringify(filteredData, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -289,12 +370,12 @@ const CSVViewerApp = () => {
   // CSVエクスポート
   const exportCsv = () => {
     if (filteredData.length === 0) return;
-    
+
     const csv = Papa.unparse({
       fields: headers,
       data: filteredData
     });
-    
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -308,7 +389,7 @@ const CSVViewerApp = () => {
   // JSONデータをクリップボードにコピー
   const copyJsonToClipboard = () => {
     if (currentData.length === 0) return;
-    
+
     const jsonString = JSON.stringify(currentData, null, 2);
     navigator.clipboard.writeText(jsonString)
       .then(() => alert('JSONデータをクリップボードにコピーしました'))
@@ -324,7 +405,7 @@ const CSVViewerApp = () => {
 3,フューチャー開発,不動産,30,福岡県福岡市,7500000,2015,鈴木花子,2000000,非上場
 4,グローバルコンサルティング,コンサルティング,200,東京都千代田区,30000000,2000,高橋一郎,10000000,上場
 5,イノベーションテクノロジー,IT,150,神奈川県横浜市,20000000,2008,伊藤誠,8000000,非上場`;
-    
+
     // サンプルデータを解析
     Papa.parse(sampleCSV, {
       header: true,
@@ -345,8 +426,38 @@ const CSVViewerApp = () => {
         </p>
       </div>
 
-      {/* ファイルアップロード */}
-      <div className="mb-6 p-6 border-2 border-dashed rounded-lg border-gray-300 bg-gray-50">
+      {/* ファイルアップロード - ドラッグアンドドロップ対応 */}
+      <div
+        className={`mb-6 p-6 border-2 border-dashed rounded-lg ${isDragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-gray-50'}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!isDragActive) setIsDragActive(true);
+        }}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragActive(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragActive(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragActive(false);
+
+          const files = e.dataTransfer.files;
+          if (files && files.length > 0 && files[0].type === 'text/csv') {
+            setFileName(files[0].name);
+            parseCSVFile(files[0]);
+          } else {
+            setError('CSVファイルをアップロードしてください');
+          }
+        }}
+      >
         <div className="flex flex-col items-center">
           <input
             type="file"
@@ -355,23 +466,32 @@ const CSVViewerApp = () => {
             ref={fileInputRef}
             className="hidden"
           />
-          
+
           <button
             onClick={() => fileInputRef.current.click()}
             className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
           >
             CSVファイルを選択
           </button>
-          
+
           <p className="text-sm text-gray-500 mb-2">または</p>
-          
+
+          <div className="text-center mb-4">
+            <div className="flex items-center justify-center mb-2">
+              <svg className="w-6 h-6 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+              </svg>
+              <p className="text-sm text-gray-600">ファイルをドラッグ＆ドロップしてアップロード</p>
+            </div>
+          </div>
+
           <button
             onClick={loadSampleData}
             className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300"
           >
             サンプルデータを表示
           </button>
-          
+
           {fileName && (
             <p className="mt-4 text-sm font-medium">
               現在のファイル: {fileName}
@@ -424,7 +544,7 @@ const CSVViewerApp = () => {
                 ))}
               </select>
             </div>
-            
+
             {/* 表示モード切り替え */}
             <div className="flex">
               <button
@@ -440,7 +560,7 @@ const CSVViewerApp = () => {
                 JSON表示
               </button>
             </div>
-            
+
             {/* データエクスポート */}
             <button
               onClick={exportJson}
@@ -448,14 +568,14 @@ const CSVViewerApp = () => {
             >
               JSON保存
             </button>
-            
+
             <button
               onClick={exportCsv}
               className="px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
             >
               CSV保存
             </button>
-            
+
             {viewMode === 'json' && (
               <button
                 onClick={copyJsonToClipboard}
@@ -464,7 +584,7 @@ const CSVViewerApp = () => {
                 JSONコピー
               </button>
             )}
-            
+
             {/* 列表示設定（テーブルモードのみ） */}
             {viewMode === 'table' && (
               <div className="relative ml-auto">
@@ -505,7 +625,7 @@ const CSVViewerApp = () => {
               </div>
             )}
           </div>
-          
+
           {/* 表示件数の設定 */}
           {viewMode === 'table' && (
             <div className="mb-4 flex flex-wrap items-center gap-4">
@@ -522,7 +642,7 @@ const CSVViewerApp = () => {
                   ))}
                 </select>
               </div>
-              
+
               <label className="flex items-center text-sm">
                 <input
                   type="checkbox"
@@ -534,7 +654,7 @@ const CSVViewerApp = () => {
               </label>
             </div>
           )}
-          
+
           {/* データサマリー */}
           <div className="mb-4 text-sm text-gray-600">
             <p>総レコード数: {totalRows.toLocaleString()}行</p>
@@ -542,7 +662,7 @@ const CSVViewerApp = () => {
               <p>検索結果: {filteredData.length.toLocaleString()}行</p>
             )}
           </div>
-          
+
           {/* テーブル表示 */}
           {viewMode === 'table' && (
             <>
@@ -554,23 +674,40 @@ const CSVViewerApp = () => {
                       {columnOrder
                         .filter(header => selectedColumns.includes(header))
                         .map((header, index) => (
-                          <th 
-                            key={header} 
-                            className="py-2 px-3 border-b text-left cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort(header)}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, index)}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, index)}
+                          <th
+                            key={header}
+                            className="py-2 px-3 border-b text-left cursor-pointer hover:bg-gray-200 relative"
+                            data-draggable="true"
+                            data-header={header}
+                            draggable="true"
+                            onDragStart={(e) => handleDragStart(e, header, index)}
+                            onDragOver={(e) => handleDragOver(e, header)}
+                            onDragLeave={(e) => handleDragLeave(e, header)}
+                            onDrop={(e) => handleDrop(e, header)}
+                            onDragEnd={handleDragEnd}
                           >
-                            <div className="flex items-center">
-                              <span className="mr-1 text-gray-400">≡</span>
-                              {header}
-                              {sortConfig.key === header && (
-                                <span className="ml-1">
-                                  {sortConfig.direction === 'ascending' ? '▲' : '▼'}
-                                </span>
-                              )}
+                            <div className="flex items-center group">
+                              <div
+                                className="mr-2 text-gray-400 cursor-move px-1 rounded hover:bg-gray-300 inline-flex items-center justify-center"
+                                title="ドラッグして列の順序を変更"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                </svg>
+                              </div>
+                              <div onClick={() => requestSort(header)} className="flex-grow">
+                                {header}
+                                {sortConfig.key === header && (
+                                  <span className="ml-1">
+                                    {sortConfig.direction === 'ascending' ? '▲' : '▼'}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </th>
                         ))}
@@ -602,7 +739,7 @@ const CSVViewerApp = () => {
                   </tbody>
                 </table>
               </div>
-              
+
               {/* ページネーション */}
               <div className="mt-4 flex flex-wrap justify-between items-center">
                 <div>
@@ -623,11 +760,11 @@ const CSVViewerApp = () => {
                   >
                     &lsaquo;
                   </button>
-                  
+
                   <span className="px-3 py-1">
                     {currentPage} / {totalPages || 1}
                   </span>
-                  
+
                   <button
                     onClick={() => changePage(currentPage + 1)}
                     disabled={currentPage === totalPages || totalPages === 0}
@@ -646,7 +783,7 @@ const CSVViewerApp = () => {
               </div>
             </>
           )}
-          
+
           {/* JSON表示 */}
           {viewMode === 'json' && (
             <div className="bg-gray-100 p-4 rounded overflow-auto max-h-96">
@@ -657,7 +794,7 @@ const CSVViewerApp = () => {
           )}
         </>
       )}
-      
+
       {/* ヘルプ情報 */}
       {!loading && data.length === 0 && !error && (
         <div className="mt-6 p-6 bg-blue-50 rounded-lg">
