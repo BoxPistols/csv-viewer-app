@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import Papa from 'papaparse';
 
@@ -18,8 +16,55 @@ const CSVViewerApp = () => {
   const [totalRows, setTotalRows] = useState(0);
   const [processingStatus, setProcessingStatus] = useState('');
   const [fileName, setFileName] = useState('');
+  
+  // 新しい状態変数
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+  const [columnOrder, setColumnOrder] = useState([]);
+  const [showAllRows, setShowAllRows] = useState(false);
+  
   const fileInputRef = useRef(null);
-  const rowsPerPage = 10;
+  const rowsPerPageOptions = [10, 25, 50, 100];
+
+  // 列設定を保存する関数
+  const saveColumnSettings = (columns) => {
+    try {
+      localStorage.setItem(`columns_${fileName}`, JSON.stringify(columns));
+    } catch (e) {
+      console.error('列設定の保存に失敗しました:', e);
+    }
+  };
+
+  // 列設定を読み込む関数
+  const loadColumnSettings = (fileName) => {
+    try {
+      const saved = localStorage.getItem(`columns_${fileName}`);
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error('列設定の読み込みに失敗しました:', e);
+      return null;
+    }
+  };
+
+  // カラム順序の保存
+  const saveColumnOrder = (order) => {
+    try {
+      localStorage.setItem(`columnOrder_${fileName}`, JSON.stringify(order));
+    } catch (e) {
+      console.error('カラム順序の保存に失敗しました:', e);
+    }
+  };
+
+  // カラム順序の読み込み
+  const loadColumnOrder = (fileName) => {
+    try {
+      const saved = localStorage.getItem(`columnOrder_${fileName}`);
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error('カラム順序の読み込みに失敗しました:', e);
+      return null;
+    }
+  };
 
   // ファイルアップロードハンドラー
   const handleFileUpload = (event) => {
@@ -38,10 +83,10 @@ const CSVViewerApp = () => {
 
     // FileReaderを使用してファイルを読み込む
     const reader = new FileReader();
-
+    
     reader.onload = (e) => {
       const csvText = e.target.result;
-
+      
       // PapaParseでCSVを解析
       Papa.parse(csvText, {
         header: true,
@@ -49,7 +94,7 @@ const CSVViewerApp = () => {
         preview: 5000, // パフォーマンスのために最初の5000行に制限
         encoding: 'UTF-8', // UTF-8で固定
         complete: (results) => {
-          processCSVData(results);
+          processCSVData(results, file.name);
         },
         error: (error) => {
           setError(`CSV解析エラー: ${error.message}`);
@@ -57,34 +102,43 @@ const CSVViewerApp = () => {
         }
       });
     };
-
+    
     reader.onerror = () => {
       setError('ファイルの読み込みに失敗しました');
       setLoading(false);
     };
-
+    
     reader.readAsText(file, 'UTF-8');
   };
 
   // CSVデータの処理
-  const processCSVData = (results) => {
+  const processCSVData = (results, currentFileName) => {
     setProcessingStatus('データを処理中...');
-
+    
     try {
       // 総行数を記録
       setTotalRows(results.data.length);
-
+      
       // ヘッダー名を取得
       const headers = results.meta.fields || [];
-
-      // デフォルトで表示する列を選択（最初の10列）
-      const defaultColumns = headers.slice(0, 10);
-
+      
+      // 保存された列設定を読み込む
+      const savedColumns = loadColumnSettings(currentFileName);
+      
+      // 保存された設定があれば使用、なければデフォルト（最初の10列）
+      const defaultColumns = savedColumns || headers.slice(0, 10);
+      
+      // 保存されたカラム順序を読み込む
+      const savedOrder = loadColumnOrder(currentFileName);
+      const initialOrder = savedOrder || [...headers];
+      
       setHeaders(headers);
       setSelectedColumns(defaultColumns);
+      setColumnOrder(initialOrder);
       setData(results.data);
       setFilteredData(results.data);
       setCurrentPage(1);
+      setSortConfig({ key: null, direction: 'ascending' });
       setLoading(false);
       setProcessingStatus('');
     } catch (e) {
@@ -93,17 +147,49 @@ const CSVViewerApp = () => {
     }
   };
 
+  // ソート関数
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // ソート状態に基づいてデータをソート
+  const getSortedData = (data) => {
+    if (!sortConfig.key) return data;
+    
+    return [...data].sort((a, b) => {
+      // 数値の場合は数値としてソート
+      if (!isNaN(a[sortConfig.key]) && !isNaN(b[sortConfig.key])) {
+        return sortConfig.direction === 'ascending' 
+          ? Number(a[sortConfig.key]) - Number(b[sortConfig.key])
+          : Number(b[sortConfig.key]) - Number(a[sortConfig.key]);
+      }
+      
+      // 文字列の場合
+      if (a[sortConfig.key] < b[sortConfig.key]) {
+        return sortConfig.direction === 'ascending' ? -1 : 1;
+      }
+      if (a[sortConfig.key] > b[sortConfig.key]) {
+        return sortConfig.direction === 'ascending' ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
   // 検索機能
   useEffect(() => {
     if (data.length === 0) return;
-
+    
     if (searchTerm.trim() === '') {
       setFilteredData(data);
     } else {
       const filtered = data.filter(row => {
         if (searchColumn === 'all') {
           // すべての列を検索
-          return Object.values(row).some(value =>
+          return Object.values(row).some(value => 
             String(value).toLowerCase().includes(searchTerm.toLowerCase())
           );
         } else {
@@ -118,25 +204,63 @@ const CSVViewerApp = () => {
 
   // 列の表示/非表示を切り替える
   const toggleColumn = (header) => {
-    if (selectedColumns.includes(header)) {
-      setSelectedColumns(selectedColumns.filter(col => col !== header));
-    } else {
-      setSelectedColumns([...selectedColumns, header]);
-    }
+    const newColumns = selectedColumns.includes(header)
+      ? selectedColumns.filter(col => col !== header)
+      : [...selectedColumns, header];
+      
+    setSelectedColumns(newColumns);
+    saveColumnSettings(newColumns); // 設定を保存
   };
 
   // すべての列を表示/非表示
   const toggleAllColumns = (show) => {
-    if (show) {
-      setSelectedColumns([...headers]);
+    const newColumns = show ? [...headers] : [];
+    setSelectedColumns(newColumns);
+    saveColumnSettings(newColumns); // 設定を保存
+  };
+
+  // ドラッグ関連のハンドラー
+  const handleDragStart = (e, index) => {
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    const dragIndex = Number(e.dataTransfer.getData('text/plain'));
+    const newOrder = [...columnOrder];
+    const [removed] = newOrder.splice(dragIndex, 1);
+    newOrder.splice(dropIndex, 0, removed);
+    
+    setColumnOrder(newOrder);
+    saveColumnOrder(newOrder); // 設定を保存
+  };
+  
+  // 表示件数の変更
+  const handleRowsPerPageChange = (value) => {
+    const numValue = Number(value);
+    setRowsPerPage(numValue);
+    setCurrentPage(1); // ページをリセット
+    setShowAllRows(false);
+  };
+  
+  // 全件表示の切り替え
+  const toggleShowAllRows = (checked) => {
+    setShowAllRows(checked);
+    if (checked) {
+      setRowsPerPage(filteredData.length || 1);
     } else {
-      setSelectedColumns([]);
+      setRowsPerPage(10);
     }
+    setCurrentPage(1);
   };
 
   // ページネーション
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-  const currentData = filteredData.slice(
+  const sortedData = getSortedData(filteredData);
+  const totalPages = Math.ceil(sortedData.length / rowsPerPage);
+  const currentData = sortedData.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
   );
@@ -150,7 +274,7 @@ const CSVViewerApp = () => {
   // JSONエクスポート
   const exportJson = () => {
     if (filteredData.length === 0) return;
-
+    
     const jsonString = JSON.stringify(filteredData, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -165,12 +289,12 @@ const CSVViewerApp = () => {
   // CSVエクスポート
   const exportCsv = () => {
     if (filteredData.length === 0) return;
-
+    
     const csv = Papa.unparse({
       fields: headers,
       data: filteredData
     });
-
+    
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -184,7 +308,7 @@ const CSVViewerApp = () => {
   // JSONデータをクリップボードにコピー
   const copyJsonToClipboard = () => {
     if (currentData.length === 0) return;
-
+    
     const jsonString = JSON.stringify(currentData, null, 2);
     navigator.clipboard.writeText(jsonString)
       .then(() => alert('JSONデータをクリップボードにコピーしました'))
@@ -194,18 +318,20 @@ const CSVViewerApp = () => {
   // サンプルCSVデータを読み込む
   const loadSampleData = () => {
     // サンプルCSVデータ（簡易版）
-    const sampleCSV = `企業ID,企業名,業種,従業員数,住所
-1,サンプル株式会社,IT,100,東京都渋谷区
-2,テスト技研,製造,50,大阪府大阪市
-3,フューチャー開発,不動産,30,福岡県福岡市`;
-
+    const sampleCSV = `企業ID,企業名,業種,従業員数,住所,売上,設立年,代表者,資本金,上場
+1,サンプル株式会社,IT,100,東京都渋谷区,10000000,2010,山田太郎,5000000,非上場
+2,テスト技研,製造,50,大阪府大阪市,5000000,2005,佐藤次郎,3000000,非上場
+3,フューチャー開発,不動産,30,福岡県福岡市,7500000,2015,鈴木花子,2000000,非上場
+4,グローバルコンサルティング,コンサルティング,200,東京都千代田区,30000000,2000,高橋一郎,10000000,上場
+5,イノベーションテクノロジー,IT,150,神奈川県横浜市,20000000,2008,伊藤誠,8000000,非上場`;
+    
     // サンプルデータを解析
     Papa.parse(sampleCSV, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
         setFileName('sample_data.csv');
-        processCSVData(results);
+        processCSVData(results, 'sample_data.csv');
       }
     });
   };
@@ -229,23 +355,23 @@ const CSVViewerApp = () => {
             ref={fileInputRef}
             className="hidden"
           />
-
+          
           <button
             onClick={() => fileInputRef.current.click()}
             className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
           >
             CSVファイルを選択
           </button>
-
+          
           <p className="text-sm text-gray-500 mb-2">または</p>
-
+          
           <button
             onClick={loadSampleData}
             className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300"
           >
             サンプルデータを表示
           </button>
-
+          
           {fileName && (
             <p className="mt-4 text-sm font-medium">
               現在のファイル: {fileName}
@@ -298,7 +424,7 @@ const CSVViewerApp = () => {
                 ))}
               </select>
             </div>
-
+            
             {/* 表示モード切り替え */}
             <div className="flex">
               <button
@@ -314,7 +440,7 @@ const CSVViewerApp = () => {
                 JSON表示
               </button>
             </div>
-
+            
             {/* データエクスポート */}
             <button
               onClick={exportJson}
@@ -322,14 +448,14 @@ const CSVViewerApp = () => {
             >
               JSON保存
             </button>
-
+            
             <button
               onClick={exportCsv}
               className="px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
             >
               CSV保存
             </button>
-
+            
             {viewMode === 'json' && (
               <button
                 onClick={copyJsonToClipboard}
@@ -338,7 +464,7 @@ const CSVViewerApp = () => {
                 JSONコピー
               </button>
             )}
-
+            
             {/* 列表示設定（テーブルモードのみ） */}
             {viewMode === 'table' && (
               <div className="relative ml-auto">
@@ -379,7 +505,36 @@ const CSVViewerApp = () => {
               </div>
             )}
           </div>
-
+          
+          {/* 表示件数の設定 */}
+          {viewMode === 'table' && (
+            <div className="mb-4 flex flex-wrap items-center gap-4">
+              <div className="flex items-center">
+                <span className="text-sm mr-2">表示件数:</span>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => handleRowsPerPageChange(e.target.value)}
+                  className="px-2 py-1 border rounded"
+                  disabled={showAllRows}
+                >
+                  {rowsPerPageOptions.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <label className="flex items-center text-sm">
+                <input
+                  type="checkbox"
+                  checked={showAllRows}
+                  onChange={(e) => toggleShowAllRows(e.target.checked)}
+                  className="mr-2"
+                />
+                全件表示
+              </label>
+            </div>
+          )}
+          
           {/* データサマリー */}
           <div className="mb-4 text-sm text-gray-600">
             <p>総レコード数: {totalRows.toLocaleString()}行</p>
@@ -387,7 +542,7 @@ const CSVViewerApp = () => {
               <p>検索結果: {filteredData.length.toLocaleString()}行</p>
             )}
           </div>
-
+          
           {/* テーブル表示 */}
           {viewMode === 'table' && (
             <>
@@ -396,11 +551,27 @@ const CSVViewerApp = () => {
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="py-2 px-3 border-b sticky left-0 bg-gray-100 z-10">No.</th>
-                      {headers
+                      {columnOrder
                         .filter(header => selectedColumns.includes(header))
-                        .map((header) => (
-                          <th key={header} className="py-2 px-3 border-b text-left">
-                            {header}
+                        .map((header, index) => (
+                          <th 
+                            key={header} 
+                            className="py-2 px-3 border-b text-left cursor-pointer hover:bg-gray-200"
+                            onClick={() => requestSort(header)}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, index)}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, index)}
+                          >
+                            <div className="flex items-center">
+                              <span className="mr-1 text-gray-400">≡</span>
+                              {header}
+                              {sortConfig.key === header && (
+                                <span className="ml-1">
+                                  {sortConfig.direction === 'ascending' ? '▲' : '▼'}
+                                </span>
+                              )}
+                            </div>
                           </th>
                         ))}
                     </tr>
@@ -412,7 +583,7 @@ const CSVViewerApp = () => {
                           <td className="py-2 px-3 border-b sticky left-0 bg-inherit z-10">
                             {(currentPage - 1) * rowsPerPage + rowIndex + 1}
                           </td>
-                          {headers
+                          {columnOrder
                             .filter(header => selectedColumns.includes(header))
                             .map((header) => (
                               <td key={`${rowIndex}-${header}`} className="py-2 px-3 border-b">
@@ -431,7 +602,7 @@ const CSVViewerApp = () => {
                   </tbody>
                 </table>
               </div>
-
+              
               {/* ページネーション */}
               <div className="mt-4 flex flex-wrap justify-between items-center">
                 <div>
@@ -452,11 +623,11 @@ const CSVViewerApp = () => {
                   >
                     &lsaquo;
                   </button>
-
+                  
                   <span className="px-3 py-1">
                     {currentPage} / {totalPages || 1}
                   </span>
-
+                  
                   <button
                     onClick={() => changePage(currentPage + 1)}
                     disabled={currentPage === totalPages || totalPages === 0}
@@ -475,7 +646,7 @@ const CSVViewerApp = () => {
               </div>
             </>
           )}
-
+          
           {/* JSON表示 */}
           {viewMode === 'json' && (
             <div className="bg-gray-100 p-4 rounded overflow-auto max-h-96">
@@ -486,7 +657,7 @@ const CSVViewerApp = () => {
           )}
         </>
       )}
-
+      
       {/* ヘルプ情報 */}
       {!loading && data.length === 0 && !error && (
         <div className="mt-6 p-6 bg-blue-50 rounded-lg">
@@ -500,7 +671,10 @@ const CSVViewerApp = () => {
           <ul className="list-disc ml-6 mb-4">
             <li>CSVファイルのテーブル表示とJSON表示</li>
             <li>データの検索とフィルタリング</li>
-            <li>表示する列の選択</li>
+            <li>表示する列の選択（設定は自動保存されます）</li>
+            <li>列の並べ替え（ドラッグ＆ドロップで順序変更）</li>
+            <li>データのソート（列ヘッダーをクリックしてソート）</li>
+            <li>表示件数の制御（ページネーションと全件表示）</li>
             <li>CSVまたはJSON形式でのエクスポート</li>
             <li>JSON形式でのクリップボードコピー</li>
           </ul>
