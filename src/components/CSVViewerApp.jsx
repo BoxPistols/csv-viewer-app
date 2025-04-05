@@ -16,6 +16,8 @@ const CSVViewerApp = () => {
   const [totalRows, setTotalRows] = useState(0);
   const [processingStatus, setProcessingStatus] = useState('');
   const [fileName, setFileName] = useState('');
+  // 全画面表示モード用の状態変数を追加
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   // 新しい状態変数
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -338,6 +340,11 @@ const CSVViewerApp = () => {
     setCurrentPage(1);
   };
 
+  // 全画面表示モードの切り替え
+  const toggleFullScreen = () => {
+    setIsFullScreen(!isFullScreen);
+  };
+
   // ページネーション
   const sortedData = getSortedData(filteredData);
   const totalPages = Math.ceil(sortedData.length / rowsPerPage);
@@ -585,6 +592,16 @@ const CSVViewerApp = () => {
               </button>
             )}
 
+            {/* 全画面表示ボタン（テーブルモードのみ） */}
+            {viewMode === 'table' && (
+              <button
+                onClick={toggleFullScreen}
+                className="px-3 py-2 bg-amber-500 text-white rounded hover:bg-amber-600"
+              >
+                {isFullScreen ? 'フルスクリーン解除' : 'フルスクリーン表示'}
+              </button>
+            )}
+
             {/* 列表示設定（テーブルモードのみ） */}
             {viewMode === 'table' && (
               <div className="relative ml-auto">
@@ -666,7 +683,19 @@ const CSVViewerApp = () => {
           {/* テーブル表示 */}
           {viewMode === 'table' && (
             <>
-              <div className="overflow-x-auto border rounded max-h-[70vh]">
+              <div className={`overflow-x-auto border rounded ${isFullScreen ?
+                'fixed inset-0 z-50 bg-white p-4' :
+                'max-h-[70vh]'}`}>
+                {isFullScreen && (
+                  <div className="flex justify-end mb-2">
+                    <button
+                      onClick={toggleFullScreen}
+                      className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+                    >
+                      ✕ 閉じる
+                    </button>
+                  </div>
+                )}
                 <table className="min-w-full bg-white">
                   <thead className="sticky top-0 z-20 text-nowrap">
                     <tr className="bg-gray-100">
@@ -745,7 +774,8 @@ const CSVViewerApp = () => {
               </div>
 
               {/* ページネーション */}
-              <div className="mt-4 flex flex-wrap justify-between items-center">
+              <div className={`mt-4 flex flex-wrap justify-between items-center ${isFullScreen ?
+                'fixed bottom-0 left-0 right-0 bg-white p-4 border-t z-50' : ''}`}>
                 <div>
                   {filteredData.length}件中 {filteredData.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} - {Math.min(currentPage * rowsPerPage, filteredData.length)} 件表示
                 </div>
@@ -815,9 +845,9 @@ const CSVViewerApp = () => {
             <li>表示する列の選択（設定は自動保存されます）</li>
             <li>列の並べ替え（ドラッグ＆ドロップで順序変更）</li>
             <li>データのソート（列ヘッダーをクリックしてソート）</li>
-            <li>表示件数の制御（ページネーションと全件表示）</li>
-            <li>CSVまたはJSON形式でのエクスポート</li>
             <li>JSON形式でのクリップボードコピー</li>
+            <li>CSVまたはJSON形式でのエクスポート</li>
+            <li>表示件数の制御（ページネーションと全件表示）</li>
           </ul>
           <p className="text-sm text-gray-600">
             注意: CSVファイルは必ずUTF-8エンコーディングで保存してください。
