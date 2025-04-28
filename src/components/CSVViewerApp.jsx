@@ -18,6 +18,25 @@ const CSVViewerApp = () => {
   const [fileName, setFileName] = useState('');
   // 全画面表示モード用の状態変数を追加
   const [isFullScreen, setIsFullScreen] = useState(false);
+  // セル表示モード用の状態変数を追加
+  const [cellDisplayMode, setCellDisplayMode] = useState(); // 'singleline', 'ellipsis'
+  // 列幅の状態を追加
+  const [columnWidths, setColumnWidths] = useState({});
+  // リサイズ中の状態管理
+  const [resizingColumn, setResizingColumn] = useState(null);
+  const [startX, setStartX] = useState(0);
+  const [startWidth, setStartWidth] = useState(0);
+
+  // ツールチップ関連の状態
+  const [tooltipContent, setTooltipContent] = useState('');
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [hoverTimer, setHoverTimer] = useState(null);
+  // eslint-disable-next-line no-unused-vars
+  const [hoveredCell, setHoveredCell] = useState(null);
+
+  // ヘッダー折り返し設定
+  const [headerWrapMode, setHeaderWrapMode] = useState(false);
 
   // 新しい状態変数
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -27,6 +46,7 @@ const CSVViewerApp = () => {
   const [isDragActive, setIsDragActive] = useState(false);
 
   const fileInputRef = useRef(null);
+  const tableRef = useRef(null);
   const rowsPerPageOptions = [10, 25, 50, 100];
 
   // 列設定を保存する関数
@@ -69,10 +89,36 @@ const CSVViewerApp = () => {
     }
   };
 
+  // カラム幅の保存
+  const saveColumnWidths = (widths) => {
+    try {
+      localStorage.setItem(`columnWidths_${fileName}`, JSON.stringify(widths));
+    } catch (e) {
+      console.error('カラム幅の保存に失敗しました:', e);
+    }
+  };
+
+  // カラム幅の読み込み
+  const loadColumnWidths = (fileName) => {
+    try {
+      const saved = localStorage.getItem(`columnWidths_${fileName}`);
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error('カラム幅の読み込みに失敗しました:', e);
+      return null;
+    }
+  };
+
+  // 列幅のリセット
+  const resetColumnWidths = () => {
+    setColumnWidths({});
+    saveColumnWidths(columnWidths);
+  };
+
   // スタイルの追加
   useEffect(() => {
     const styleEl = document.createElement('style');
-    styleEl.id = 'csv-viewer-drag-styles';
+    styleEl.id = 'csv-viewer-styles';
     styleEl.innerHTML = `
       .column-dragging {
         opacity: 0.6;
@@ -81,14 +127,226 @@ const CSVViewerApp = () => {
         background-color: #e0f2fe;
         border-left: 2px solid #3b82f6;
       }
+      .cell-ellipsis {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .cell-singleline {
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .cell-multiline {
+        white-space: pre-wrap;
+        max-height: 72px; /* 約3行分 */
+        overflow: hidden;
+        display: block;
+        text-overflow: ellipsis;
+        word-break: break-word;
+      }
+      .resizing {
+        cursor: col-resize;
+        user-select: none;
+      }
+      .column-resize-handle {
+        position: absolute;
+        right: 0;
+        top: 0;
+        height: 100%;
+        width: 8px;
+        cursor: col-resize;
+        z-index: 1;
+        background-color: rgba(0, 0, 0, 0.05);
+        border-right: 1px solid #ddd;
+      }
+      .column-resize-handle:hover, .column-resize-handle:active {
+        background-color: rgba(59, 130, 246, 0.2);
+        border-right: 1px solid #3b82f6;
+      }
+      th {
+        position: relative;
+      }
+      td, th {
+        box-sizing: border-box;
+      }
+      .table-container {
+        max-width: 100%;
+      }
+      .cell-tooltip {
+        position: fixed;
+        background-color: #333;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        z-index: 10000;
+        max-width: 400px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .cell-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #333 transparent transparent transparent;
+      }
+      .header-wrap {
+        white-space: normal !important;
+        word-break: break-word;
+      }
+      .header-nowrap {
+        white-space: nowrap !important;
+      }
+      .switch-container {
+        display: inline-flex;
+        align-items: center;
+        margin-right: 10px;
+      }
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 20px;
+        margin: 0 8px;
+      }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 20px;
+      }
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 2px;
+        bottom: 2px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+      }
+      input:checked + .slider {
+        background-color: #2196F3;
+      }
+      input:checked + .slider:before {
+        transform: translateX(20px);
+      }
+      .switch-label {
+        font-size: 12px;
+        color: #666;
+      }
     `;
     document.head.appendChild(styleEl);
 
     return () => {
-      const existingStyle = document.getElementById('csv-viewer-drag-styles');
+      const existingStyle = document.getElementById('csv-viewer-styles');
       if (existingStyle) existingStyle.remove();
     };
   }, []);
+
+  // リサイズイベントリスナーを設定
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (resizingColumn) {
+        e.preventDefault();
+        const deltaX = e.clientX - startX;
+        const newWidth = Math.max(50, startWidth + deltaX); // 最小幅を50pxに設定
+
+        setColumnWidths(prev => ({
+          ...prev,
+          [resizingColumn]: newWidth
+        }));
+
+        // テーブル全体にリサイズ中のクラスを追加
+        if (tableRef.current) {
+          tableRef.current.classList.add('resizing');
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (resizingColumn) {
+        // リサイズが完了したら状態をリセット
+        setResizingColumn(null);
+        setStartX(0);
+        setStartWidth(0);
+
+        // テーブルからリサイズ中のクラスを削除
+        if (tableRef.current) {
+          tableRef.current.classList.remove('resizing');
+        }
+
+        // 列幅の設定を保存
+        saveColumnWidths(columnWidths);
+      }
+    };
+
+    // イベントリスナーを追加
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    // クリーンアップ関数
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resizingColumn, startX, startWidth, columnWidths]);
+
+  // ツールチップ表示のためのマウスホバー管理を修正
+  const handleCellMouseEnter = (e, content) => {
+    if (!content) return;
+
+    // ホバー開始時にすぐツールチップを表示する（タイマーを使わない）
+    clearTimeout(hoverTimer);
+    setHoveredCell(e.target);
+
+    const newTimer = setTimeout(() => {
+      const rect = e.target.getBoundingClientRect();
+      setTooltipContent(content);
+      setTooltipPosition({
+        x: rect.left + (rect.width / 2),
+        y: rect.top - 10
+      });
+      setShowTooltip(true);
+    }, 2000); // 2秒後にツールチップ表示
+
+    setHoverTimer(newTimer);
+  };
+
+  const handleCellMouseLeave = () => {
+    clearTimeout(hoverTimer);
+    setHoverTimer(null);
+    setShowTooltip(false);
+  };
+
+  // 列のリサイズを開始する関数
+  const handleMouseDown = (e, header) => {
+    e.preventDefault();
+    const headerCell = e.target.closest('th');
+    if (headerCell) {
+      const currentWidth = headerCell.offsetWidth;
+      setResizingColumn(header);
+      setStartX(e.clientX);
+      setStartWidth(currentWidth);
+    }
+  };
 
   // ファイルアップロードハンドラー
   const handleFileUpload = (event) => {
@@ -155,6 +413,10 @@ const CSVViewerApp = () => {
       // 保存されたカラム順序を読み込む
       const savedOrder = loadColumnOrder(currentFileName);
       const initialOrder = savedOrder || [...headers];
+
+      // 保存されたカラム幅を読み込む
+      const savedWidths = loadColumnWidths(currentFileName);
+      setColumnWidths(savedWidths || {});
 
       setHeaders(headers);
       setSelectedColumns(defaultColumns);
@@ -641,9 +903,23 @@ const CSVViewerApp = () => {
                 </div>
               </div>
             )}
+
+            {/* 列幅リセットボタン */}
+            {viewMode === 'table' && (
+              <button
+                onClick={resetColumnWidths}
+                className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300 flex items-center"
+                title="列幅をリセット"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                列幅リセット
+              </button>
+            )}
           </div>
 
-          {/* 表示件数の設定 */}
+          {/* 表示オプション設定 */}
           {viewMode === 'table' && (
             <div className="mb-4 flex flex-wrap items-center gap-4">
               <div className="flex items-center">
@@ -669,6 +945,33 @@ const CSVViewerApp = () => {
                 />
                 全件表示
               </label>
+
+              {/* セル表示モードの設定 */}
+              <div className="flex items-center ml-4">
+                <span className="text-sm mr-2">セル表示:</span>
+                <select
+                  value={cellDisplayMode}
+                  onChange={(e) => setCellDisplayMode(e.target.value)}
+                  className="px-2 py-1 border rounded"
+                >
+                  <option value="singleline">1行（折り返しなし）</option>
+                  <option value="ellipsis">1行（省略表示）</option>
+                </select>
+              </div>
+
+              {/* ヘッダー折り返しトグルスイッチ */}
+              <div className="switch-container">
+                <span className="switch-label">見出し改行なし</span>
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={headerWrapMode}
+                    onChange={() => setHeaderWrapMode(!headerWrapMode)}
+                  />
+                  <span className="slider"></span>
+                </label>
+                <span className="switch-label">改行あり</span>
+              </div>
             </div>
           )}
 
@@ -696,82 +999,124 @@ const CSVViewerApp = () => {
                     </button>
                   </div>
                 )}
-                <table className="min-w-full bg-white">
-                  <thead className="sticky top-0 z-20 text-nowrap">
-                    <tr className="bg-gray-100">
-                      <th className="py-2 px-3 border-b sticky left-0 bg-gray-100 z-30">No.</th>
-                      {columnOrder
-                        .filter(header => selectedColumns.includes(header))
-                        .map((header, index) => (
-                          <th
-                            key={header}
-                            className="py-2 px-3 border-b text-left cursor-pointer hover:bg-gray-200 relative"
-                            data-draggable="true"
-                            data-header={header}
-                            draggable="true"
-                            onDragStart={(e) => handleDragStart(e, header, index)}
-                            onDragOver={(e) => handleDragOver(e, header)}
-                            onDragLeave={(e) => handleDragLeave(e, header)}
-                            onDrop={(e) => handleDrop(e, header)}
-                            onDragEnd={handleDragEnd}
-                          >
-                            <div className="flex items-center group relative">
-                              <div
-                                className="absolute right-0 w-2 h-full cursor-col-resize"
-                                onMouseDown={(e) => handleMouseDown(e, header)}
-                              />
-                              <div
-                                className="mr-2 text-gray-400 cursor-move px-1 rounded hover:bg-gray-300 inline-flex items-center justify-center"
-                                title="ドラッグして列の順序を変更"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <line x1="8" y1="6" x2="21" y2="6"></line>
-                                  <line x1="8" y1="12" x2="21" y2="12"></line>
-                                  <line x1="8" y1="18" x2="21" y2="18"></line>
-                                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                                </svg>
+                <div className="table-container">
+                  <table className="min-w-full bg-white" ref={tableRef}>
+                    <thead className="sticky top-0 z-20">
+                      <tr className="bg-gray-100">
+                        <th className={`py-2 px-3 border-b sticky left-0 bg-gray-100 z-30 ${headerWrapMode ? 'header-wrap minw-' : 'header-nowrap'}`}>No.</th>
+                        {columnOrder
+                          .filter(header => selectedColumns.includes(header))
+                          .map((header, index) => (
+                            <th
+                              key={header}
+                              className={`py-2 px-3 border-b text-left min-w-24 cursor-pointer hover:bg-gray-200 relative ${headerWrapMode ? 'header-wrap' : 'header-nowrap'}`}
+                              data-draggable="true"
+                              data-header={header}
+                              draggable="true"
+                              onDragStart={(e) => handleDragStart(e, header, index)}
+                              onDragOver={(e) => handleDragOver(e, header)}
+                              onDragLeave={(e) => handleDragLeave(e, header)}
+                              onDrop={(e) => handleDrop(e, header)}
+                              onDragEnd={handleDragEnd}
+                              style={{
+                                width: columnWidths[header] ? `${columnWidths[header]}px` : 'auto',
+                                paddingRight: '16px' // ハンドル用の余白を確保
+                              }}
+                            >
+                              <div className="flex items-center group relative">
+                                <div
+                                  className="mr-2 text-gray-400 cursor-move px-1 rounded hover:bg-gray-300 inline-flex items-center justify-center"
+                                  title="ドラッグして列の順序を変更"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                  </svg>
+                                </div>
+                                <div onClick={() => requestSort(header)} className="flex-grow">
+                                  {header}
+                                  {sortConfig.key === header && (
+                                    <span className="ml-1">
+                                      {sortConfig.direction === 'ascending' ? '▲' : '▼'}
+                                    </span>
+                                  )}
+                                </div>
+                                {/* 列幅調整ハンドル - 常に表示 */}
+                                <div
+                                  className="column-resize-handle"
+                                  onMouseDown={(e) => handleMouseDown(e, header)}
+                                  title="ドラッグして列幅を調整"
+                                >
+                                  <div className="h-full flex items-center justify-center">
+                                    <div className="w-0.5 h-6 bg-gray-300"></div>
+                                  </div>
+                                </div>
                               </div>
-                              <div onClick={() => requestSort(header)} className="flex-grow">
-                                {header}
-                                {sortConfig.key === header && (
-                                  <span className="ml-1">
-                                    {sortConfig.direction === 'ascending' ? '▲' : '▼'}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </th>
-                        ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentData.length > 0 ? (
-                      currentData.map((row, rowIndex) => (
-                        <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                          <td className="py-2 px-3 border-b sticky left-0 bg-inherit z-10">
-                            {(currentPage - 1) * rowsPerPage + rowIndex + 1}
-                          </td>
-                          {columnOrder
-                            .filter(header => selectedColumns.includes(header))
-                            .map((header) => (
-                              <td key={`${rowIndex}-${header}`} className="py-2 px-3 border-b">
-                                {row[header] || ''}
-                              </td>
-                            ))}
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={selectedColumns.length + 1} className="py-4 text-center">
-                          該当するデータがありません
-                        </td>
+                            </th>
+                          ))}
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {currentData.length > 0 ? (
+                        currentData.map((row, rowIndex) => (
+                          <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                            <td className="py-2 px-3 border-b sticky left-0 bg-inherit z-10">
+                              {(currentPage - 1) * rowsPerPage + rowIndex + 1}
+                            </td>
+                            {columnOrder
+                              .filter(header => selectedColumns.includes(header))
+                              .map((header) => {
+                                const content = String(row[header] || '');
+                                let displayContent = content;
+
+                                return (
+                                  <td
+                                    key={`${rowIndex}-${header}`}
+                                    className={`py-2 px-3 border-b ${cellDisplayMode === 'singleline'
+                                      ? 'cell-singleline'
+                                      : cellDisplayMode === 'ellipsis'
+                                        ? 'cell-ellipsis'
+                                        : ''
+                                      }`}
+                                    style={{
+                                      width: columnWidths[header] ? `${columnWidths[header]}px` : 'auto',
+                                      maxWidth: columnWidths[header] ? `${columnWidths[header]}px` : '250px'
+                                    }}
+                                    onMouseEnter={(e) => handleCellMouseEnter(e, content)}
+                                    onMouseLeave={handleCellMouseLeave}
+                                  >
+                                    {displayContent}
+                                  </td>
+                                );
+                              })}
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={selectedColumns.length + 1} className="py-4 text-center">
+                            該当するデータがありません
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
+              {/* ツールチップ */}
+              {showTooltip && (
+                <div className="cell-tooltip" style={{
+                  top: `${tooltipPosition.y}px`,
+                  left: `${tooltipPosition.x}px`,
+                  transform: 'translate(-50%, -100%)'
+                }}>
+                  {tooltipContent}
+                </div>
+              )}
 
               {/* ページネーション */}
               <div className={`mt-4 flex flex-wrap justify-between items-center ${isFullScreen ?
@@ -844,10 +1189,15 @@ const CSVViewerApp = () => {
             <li>データの検索とフィルタリング</li>
             <li>表示する列の選択（設定は自動保存されます）</li>
             <li>列の並べ替え（ドラッグ＆ドロップで順序変更）</li>
+            <li>列幅の調整（境界線をドラッグして幅を変更）</li>
+            <li>セル表示の切り替え（単一行または省略表示）</li>
+            <li>ホバーでツールチップ表示（長文の全文表示）</li>
+            <li>ヘッダー折り返し設定（長い列見出しの表示調整）</li>
             <li>データのソート（列ヘッダーをクリックしてソート）</li>
-            <li>JSON形式でのクリップボードコピー</li>
-            <li>CSVまたはJSON形式でのエクスポート</li>
             <li>表示件数の制御（ページネーションと全件表示）</li>
+            <li>CSVまたはJSON形式でのエクスポート</li>
+            <li>JSON形式でのクリップボードコピー</li>
+            <li>フルスクリーン表示モード</li>
           </ul>
           <p className="text-sm text-gray-600">
             注意: CSVファイルは必ずUTF-8エンコーディングで保存してください。
