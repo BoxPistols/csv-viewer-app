@@ -1386,6 +1386,7 @@ const CSVViewerApp = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
