@@ -44,6 +44,7 @@ const CSVViewerApp = () => {
   const [columnOrder, setColumnOrder] = useState([]);
   const [showAllRows, setShowAllRows] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
 
   const fileInputRef = useRef(null);
   const tableRef = useRef(null);
@@ -124,8 +125,8 @@ const CSVViewerApp = () => {
         opacity: 0.6;
         transform: scale(0.98);
       }
-      .column-drag-over {
-        background: linear-gradient(to right, rgb(59, 130, 246), rgb(147, 51, 234)) !important;
+      th.column-drag-over {
+        background: linear-gradient(to right, rgb(59, 130, 246), rgb(147, 51, 234));
         border-left: 3px solid #fff;
         box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
       }
@@ -960,14 +961,15 @@ const CSVViewerApp = () => {
                 <div className="relative ml-auto">
                   <button
                     className="px-4 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl font-medium shadow-md hover:shadow-lg transform transition-all duration-200 hover:scale-105 flex items-center"
-                    onClick={() => document.getElementById('column-selector').classList.toggle('hidden')}
+                    onClick={() => setIsColumnSelectorOpen(prev => !prev)}
                   >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                     </svg>
                     列の設定
                   </button>
-                  <div id="column-selector" className="hidden absolute right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 z-30 max-h-80 overflow-y-auto w-72">
+                  {isColumnSelectorOpen && (
+                    <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 z-30 max-h-80 overflow-y-auto w-72">
                     <div className="flex justify-between mb-3 pb-3 border-b border-gray-200">
                       <button
                         className="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all"
@@ -996,7 +998,8 @@ const CSVViewerApp = () => {
                         </label>
                       ))}
                     </div>
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
 
