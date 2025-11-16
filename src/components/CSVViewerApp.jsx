@@ -454,9 +454,9 @@ const CSVViewerApp = () => {
           complete: (results) => {
             // 解析エラーチェック
             if (results.errors && results.errors.length > 0) {
-              const criticalErrors = results.errors.filter(err => err.type === 'FieldMismatch' || err.type === 'Quotes');
+              const parsingWarnings = results.errors.filter(err => err.type === 'FieldMismatch' || err.type === 'Quotes');
 
-              if (criticalErrors.length > 0) {
+              if (parsingWarnings.length > 0) {
                 console.warn('CSV解析時に警告がありました:', results.errors);
                 setProcessingStatus(`警告: CSVファイルに${results.errors.length}個の軽微な問題がありましたが、処理を続行します。`);
               }
