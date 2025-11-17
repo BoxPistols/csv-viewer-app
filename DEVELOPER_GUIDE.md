@@ -852,17 +852,24 @@ src/
 
 ### 今後の改善案
 
+#### 完了済み ✅
+- [x] CSVViewerAppをさらに小さなコンポーネントに分割
+- [x] エクスポート機能のコンポーネント化
+- [x] 検索バーのコンポーネント化
+- [x] ページネーションのコンポーネント化
+- [x] ダークモード対応
+- [x] テーマカスタマイズ機能（ライト/ダーク切り替え）
+
 #### 短期（すぐに実装可能）
-- [ ] CSVViewerAppをさらに小さなコンポーネントに分割
-- [ ] エクスポート機能のコンポーネント化
-- [ ] 検索バーのコンポーネント化
-- [ ] ページネーションのコンポーネント化
+- [ ] DataTableコンポーネントのさらなる分割
+- [ ] JSONビューアーの独立コンポーネント化
+- [ ] 設定パネルのコンポーネント化
 
 #### 中期（数週間）
 - [ ] 仮想スクロール（react-window）で大量データ対応
-- [ ] ダークモード対応
-- [ ] テーマカスタマイズ機能
+- [ ] 複数テーマ対応（ブルー、グリーン、パープルなど）
 - [ ] プラグインアーキテクチャ
+- [ ] データエクスポート形式の追加（Excel、TSV）
 
 #### 長期（数ヶ月）
 - [ ] TypeScript化
@@ -879,8 +886,600 @@ src/
 - ✅ **検索フィルタリング**: 10ms以下（1000行）
 - ✅ **ソート**: 20ms以下（1000行）
 - ✅ **ページ切り替え**: 5ms以下
-- ✅ **バンドルサイズ**: 250KB（gzip: 77KB）
+- ✅ **バンドルサイズ**: 252KB（gzip: 77.6KB）
 
 ---
+
+## 🎨 コンポーネントアーキテクチャ（最新版）
+
+### モジュール化されたUIコンポーネント
+
+コードの再利用性とメンテナンス性を向上させるため、9つの独立したUIコンポーネントを作成しました。
+
+#### 1. **FileUpload** (`src/components/ui/FileUpload.jsx`)
+
+ファイルアップロード機能を担当:
+
+```javascript
+<FileUpload
+  onFileSelect={(file) => handleFileUpload(file)}
+  onSampleDataLoad={() => loadSampleData()}
+  fileName={fileName}
+  isDragActive={isDragActive}
+  setIsDragActive={setIsDragActive}
+/>
+```
+
+**機能**:
+- ドラッグ＆ドロップ対応
+- ファイル選択ボタン
+- サンプルデータ読み込み
+- アップロード状態の視覚的フィードバック
+- ダークモード対応
+
+---
+
+#### 2. **SearchBar** (`src/components/ui/SearchBar.jsx`)
+
+検索機能のUI:
+
+```javascript
+<SearchBar
+  searchTerm={searchTerm}
+  onSearchChange={(term) => setSearchTerm(term)}
+  searchColumn={searchColumn}
+  onColumnChange={(col) => setSearchColumn(col)}
+  headers={headers}
+/>
+```
+
+**機能**:
+- 検索入力フィールド
+- 列選択ドロップダウン
+- 全列検索対応
+- リアルタイム検索
+- ダークモード対応
+
+---
+
+#### 3. **ViewModeToggle** (`src/components/ui/ViewModeToggle.jsx`)
+
+表示モード切り替え:
+
+```javascript
+<ViewModeToggle
+  viewMode={viewMode}
+  onViewModeChange={(mode) => setViewMode(mode)}
+/>
+```
+
+**機能**:
+- テーブルビュー/JSONビュー切り替え
+- アイコン付きボタン
+- アクティブ状態の視覚的フィードバック
+- スムーズなトランジション
+
+---
+
+#### 4. **ExportButtons** (`src/components/ui/ExportButtons.jsx`)
+
+データエクスポート機能:
+
+```javascript
+<ExportButtons
+  onExportJson={() => exportJson()}
+  onExportCsv={() => exportCsv()}
+  onCopyJson={() => copyJsonToClipboard()}
+  viewMode={viewMode}
+  onToggleFullScreen={() => toggleFullScreen()}
+  isFullScreen={isFullScreen}
+/>
+```
+
+**機能**:
+- JSON形式でエクスポート
+- CSV形式でエクスポート
+- JSONをクリップボードにコピー
+- フルスクリーン切り替え
+- 条件付きレンダリング
+
+---
+
+#### 5. **ColumnSelector** (`src/components/ui/ColumnSelector.jsx`)
+
+列の表示設定:
+
+```javascript
+<ColumnSelector
+  isOpen={isColumnSelectorOpen}
+  onToggle={() => setIsColumnSelectorOpen(!isColumnSelectorOpen)}
+  headers={headers}
+  selectedColumns={selectedColumns}
+  onToggleColumn={(header) => toggleColumn(header)}
+  onToggleAllColumns={(show) => toggleAllColumns(show)}
+  onResetWidths={() => resetColumnWidths()}
+/>
+```
+
+**機能**:
+- 列の表示/非表示切り替え
+- 全選択/全解除
+- 列幅リセット
+- ドロップダウンメニュー
+- チェックボックスリスト
+
+---
+
+#### 6. **Pagination** (`src/components/ui/Pagination.jsx`)
+
+ページネーション機能:
+
+```javascript
+<Pagination
+  currentPage={currentPage}
+  totalPages={totalPages}
+  filteredDataLength={filteredData.length}
+  rowsPerPage={rowsPerPage}
+  onPageChange={(page) => changePage(page)}
+  isFullScreen={isFullScreen}
+/>
+```
+
+**機能**:
+- ページ番号表示
+- 前後ページボタン
+- 最初/最後のページボタン
+- 現在の表示範囲表示
+- フルスクリーン対応
+
+---
+
+#### 7. **LoadingSpinner** (`src/components/ui/LoadingSpinner.jsx`)
+
+ローディング状態の表示:
+
+```javascript
+<LoadingSpinner status={processingStatus} />
+```
+
+**機能**:
+- 回転アニメーション
+- ステータステキスト表示
+- プログレスバー
+- 視覚的に魅力的なデザイン
+- ダークモード対応
+
+---
+
+#### 8. **ErrorDisplay** (`src/components/ui/ErrorDisplay.jsx`)
+
+エラーメッセージ表示:
+
+```javascript
+<ErrorDisplay
+  error={error}
+  onClose={() => setError(null)}
+/>
+```
+
+**機能**:
+- エラーアイコン
+- エラーメッセージ
+- 閉じるボタン
+- アクセシビリティ対応（role="alert"）
+- ダークモード対応
+
+---
+
+#### 9. **DarkModeToggle** (`src/components/ui/DarkModeToggle.jsx`)
+
+ダークモード切り替えボタン:
+
+```javascript
+<DarkModeToggle />
+```
+
+**機能**:
+- ワンクリックでテーマ切り替え
+- 現在のテーマを視覚的に表示
+- アイコンとテキストラベル
+- 自動的にThemeContextから状態を取得
+- 固定位置で常にアクセス可能
+
+---
+
+### コンポーネント設計の原則
+
+#### 1. **単一責任の原則**
+各コンポーネントは1つの機能のみを担当します。
+
+#### 2. **Props による制御**
+すべてのコンポーネントは親からpropsで制御され、自己完結しません。
+
+#### 3. **React.memo による最適化**
+すべてのコンポーネントは `React.memo` でラップされ、不要な再レンダリングを防ぎます。
+
+```javascript
+export default React.memo(ComponentName);
+```
+
+#### 4. **ダークモード対応**
+すべてのUIコンポーネントはTailwind CSSの `dark:` プレフィックスを使用してダークモードに対応しています。
+
+---
+
+## 🌙 ダークモード実装
+
+### アーキテクチャ概要
+
+ダークモードは以下の3つの主要な要素で構成されています：
+
+1. **useDarkMode Hook** - テーマ状態の管理
+2. **ThemeContext** - グローバルなテーマ状態
+3. **Tailwind CSS** - スタイリング
+
+---
+
+### 1. useDarkMode Hook
+
+**ファイル**: `src/hooks/useDarkMode.js`
+
+```javascript
+import { useState, useEffect } from 'react';
+
+export const useDarkMode = () => {
+  const [isDark, setIsDark] = useState(() => {
+    // 1. ローカルストレージから設定を読み込み
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      return savedTheme === 'dark';
+    }
+    // 2. システム設定を確認
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDark]);
+
+  const toggleDarkMode = () => {
+    setIsDark(prev => !prev);
+  };
+
+  return { isDark, toggleDarkMode, setIsDark };
+};
+```
+
+**特徴**:
+- ユーザーの設定を `localStorage` に保存
+- OSのダークモード設定を自動検出
+- `<html>` タグに `dark` クラスを追加/削除
+
+---
+
+### 2. ThemeContext
+
+**ファイル**: `src/context/ThemeContext.jsx`
+
+```javascript
+import React, { createContext, useContext } from 'react';
+import { useDarkMode } from '../hooks/useDarkMode';
+
+const ThemeContext = createContext();
+
+export const ThemeProvider = ({ children }) => {
+  const { isDark, toggleDarkMode, setIsDark } = useDarkMode();
+
+  return (
+    <ThemeContext.Provider value={{ isDark, toggleDarkMode, setIsDark }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (context === undefined) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
+};
+```
+
+**使用方法**:
+
+```javascript
+// main.jsx でアプリ全体をラップ
+import { ThemeProvider } from './context/ThemeContext';
+
+<ThemeProvider>
+  <App />
+</ThemeProvider>
+
+// コンポーネント内で使用
+import { useTheme } from '../context/ThemeContext';
+
+const MyComponent = () => {
+  const { isDark, toggleDarkMode } = useTheme();
+
+  return (
+    <button onClick={toggleDarkMode}>
+      {isDark ? 'ライト' : 'ダーク'}
+    </button>
+  );
+};
+```
+
+---
+
+### 3. Tailwind CSS設定
+
+**ファイル**: `tailwind.config.js`
+
+```javascript
+export default {
+  darkMode: 'class', // classベースのダークモード
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+```
+
+**重要**: `darkMode: 'class'` を設定することで、`dark:` プレフィックスが使用可能になります。
+
+---
+
+### 4. CSS変数
+
+**ファイル**: `src/index.css`
+
+```css
+/* ライトモードの色 */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  --border-primary: #e5e7eb;
+  --border-secondary: #d1d5db;
+}
+
+/* ダークモードの色 */
+.dark {
+  --bg-primary: #1e293b;
+  --bg-secondary: #0f172a;
+  --bg-tertiary: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+  --border-primary: #475569;
+  --border-secondary: #64748b;
+}
+
+/* ダークモード時のbody */
+.dark body {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* ダークモード時のスクロールバー */
+.dark ::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, #1e293b, #0f172a);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+  border: 2px solid #1e293b;
+}
+```
+
+---
+
+### 5. コンポーネントでのダークモード対応
+
+Tailwind CSSの `dark:` プレフィックスを使用:
+
+```javascript
+// ライトモード: 白背景、ダークモード: グレー背景
+<div className="bg-white dark:bg-gray-800">
+
+// ライトモード: グレーテキスト、ダークモード: ライトグレーテキスト
+<p className="text-gray-700 dark:text-gray-300">
+
+// ライトモード: グレーボーダー、ダークモード: ダークグレーボーダー
+<input className="border-gray-300 dark:border-gray-600" />
+```
+
+**良い例**:
+
+```javascript
+<div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-8">
+  <h3 className="text-gray-800 dark:text-gray-100">タイトル</h3>
+  <p className="text-gray-600 dark:text-gray-300">説明文</p>
+  <input
+    className="border-gray-300 dark:border-gray-600
+               bg-white dark:bg-gray-700
+               text-gray-900 dark:text-gray-100"
+  />
+</div>
+```
+
+---
+
+### 6. グラデーション背景
+
+**ファイル**: `src/App.jsx`
+
+```javascript
+<div className="min-h-screen
+                bg-gradient-to-br
+                from-blue-50 via-indigo-50 to-purple-50
+                dark:from-gray-900 dark:via-gray-800 dark:to-gray-900
+                transition-colors duration-300">
+  {/* コンテンツ */}
+</div>
+```
+
+**特徴**:
+- ライトモード: ブルー系グラデーション
+- ダークモード: グレー系グラデーション
+- スムーズなトランジション（300ms）
+
+---
+
+### ダークモードのベストプラクティス
+
+#### 1. **すべてのテキストに色を指定**
+```javascript
+// ❌ 悪い例（デフォルトの黒色がダークモードで見えない）
+<p>テキスト</p>
+
+// ✅ 良い例
+<p className="text-gray-800 dark:text-gray-100">テキスト</p>
+```
+
+#### 2. **背景色を明示的に設定**
+```javascript
+// ❌ 悪い例
+<div className="p-4">
+
+// ✅ 良い例
+<div className="bg-white dark:bg-gray-800 p-4">
+```
+
+#### 3. **ボーダーとシャドウも対応**
+```javascript
+<div className="border border-gray-200 dark:border-gray-700
+                shadow-lg dark:shadow-xl">
+```
+
+#### 4. **トランジションを追加**
+```javascript
+<div className="transition-colors duration-300">
+```
+
+---
+
+### ダークモードテスト
+
+#### 手動テスト
+
+1. **トグルボタンのテスト**
+   - 右上のダークモードボタンをクリック
+   - テーマが切り替わることを確認
+
+2. **永続性のテスト**
+   - ダークモードに切り替え
+   - ページをリロード
+   - ダークモードが維持されていることを確認
+
+3. **システム設定のテスト**
+   - ローカルストレージをクリア
+   - OSをダークモードに設定
+   - アプリを開く
+   - 自動的にダークモードになることを確認
+
+#### コードでのテスト
+
+```javascript
+describe('Dark Mode', () => {
+  it('should toggle dark mode', () => {
+    const { isDark, toggleDarkMode } = useDarkMode();
+    expect(isDark).toBe(false);
+
+    toggleDarkMode();
+    expect(isDark).toBe(true);
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+  });
+});
+```
+
+---
+
+### トラブルシューティング
+
+#### 問題1: ダークモードが動作しない
+
+**原因**: Tailwind設定が正しくない
+
+**解決策**:
+```javascript
+// tailwind.config.js を確認
+export default {
+  darkMode: 'class', // これが必要！
+  // ...
+}
+```
+
+#### 問題2: 一部のコンポーネントだけダークモードにならない
+
+**原因**: `dark:` プレフィックスが付いていない
+
+**解決策**:
+すべての背景色、テキスト色、ボーダー色に `dark:` バリアントを追加
+
+#### 問題3: ちらつきが発生する
+
+**原因**: 初期レンダリング時にテーマが適用されていない
+
+**解決策**:
+```javascript
+// useDarkMode.js で初期状態を同期的に設定
+const [isDark, setIsDark] = useState(() => {
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme) return savedTheme === 'dark';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+});
+```
+
+---
+
+### ダークモードの拡張
+
+#### カスタムテーマの追加
+
+将来的に複数のテーマを追加する場合:
+
+```javascript
+// themeConfig.js
+export const themes = {
+  light: {
+    primary: '#3b82f6',
+    secondary: '#8b5cf6',
+    background: '#ffffff',
+    text: '#1f2937'
+  },
+  dark: {
+    primary: '#60a5fa',
+    secondary: '#a78bfa',
+    background: '#1e293b',
+    text: '#f1f5f9'
+  },
+  blue: {
+    primary: '#0ea5e9',
+    secondary: '#06b6d4',
+    background: '#e0f2fe',
+    text: '#0c4a6e'
+  }
+};
+```
+
+---
+
+**ダークモード実装完了！ 🌙✨**
 
 **Happy Coding! 🚀**
