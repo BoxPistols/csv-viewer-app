@@ -856,19 +856,19 @@ const CSVViewerApp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="w-full p-6 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="w-full px-3 py-4 sm:px-4 sm:py-6 md:p-6 max-w-7xl mx-auto">
         {/* ヘッダーセクション - モダンなデザイン */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-4 shadow-lg">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="mb-6 sm:mb-8 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-3 sm:mb-4 shadow-lg">
+            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent px-2">
             CSV Viewer
           </h1>
-          <p className="text-base text-gray-600 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 max-w-2xl mx-auto px-4">
             CSVファイルを美しく表示・分析。データを視覚化し、検索、エクスポートが簡単にできます。
           </p>
         </div>
@@ -1038,37 +1038,39 @@ const CSVViewerApp = () => {
       {!loading && data.length > 0 && (
         <>
           {/* コントロールパネル - モダンなデザイン */}
-          <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-            <div className="flex flex-wrap gap-3 items-center">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-3 sm:p-4 md:p-6 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 items-stretch sm:items-center">
               {/* 検索 */}
-              <div className="flex-grow max-w-md">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+              <div className="w-full sm:flex-grow sm:max-w-md">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+                  <div className="relative flex-grow">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="検索..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl sm:rounded-l-xl sm:rounded-r-none w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base min-h-[44px]"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    placeholder="検索..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-3 py-2.5 border border-gray-300 rounded-l-xl w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
+                  <select
+                    value={searchColumn}
+                    onChange={(e) => setSearchColumn(e.target.value)}
+                    className="px-3 py-2.5 border sm:border-l-0 border-gray-300 dark:border-gray-600 rounded-xl sm:rounded-r-xl sm:rounded-l-none bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base min-h-[44px]"
+                  >
+                    <option value="all">すべての列</option>
+                    {headers.map((header) => (
+                      <option key={header} value={header}>
+                        {header}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
-              <select
-                value={searchColumn}
-                onChange={(e) => setSearchColumn(e.target.value)}
-                className="px-4 py-2.5 border border-l-0 border-gray-300 rounded-r-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="all">すべての列</option>
-                {headers.map((header) => (
-                  <option key={header} value={header}>
-                    {header}
-                  </option>
-                ))}
-              </select>
 
               {/* 表示モード切り替え */}
               <div className="flex bg-gray-100 rounded-xl p-1 shadow-inner">
