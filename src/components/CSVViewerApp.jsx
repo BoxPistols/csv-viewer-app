@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Papa from 'papaparse';
 
 const CSVViewerApp = () => {
@@ -361,6 +361,7 @@ const CSVViewerApp = () => {
   // ファイルバリデーション
   const validateFile = (file) => {
     const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+    const LARGE_FILE_WARNING_SIZE = 10 * 1024 * 1024; // 10MB
     const ALLOWED_TYPES = ['text/csv', 'application/vnd.ms-excel', 'text/plain'];
     const ALLOWED_EXTENSIONS = ['.csv'];
 
@@ -380,19 +381,20 @@ const CSVViewerApp = () => {
       };
     }
 
-    // ファイル拡張子チェック
+    // ファイル拡張子とMIMEタイプのチェック
     const fileName = file.name.toLowerCase();
     const hasValidExtension = ALLOWED_EXTENSIONS.some(ext => fileName.endsWith(ext));
+    const hasValidType = ALLOWED_TYPES.includes(file.type);
 
-    if (!hasValidExtension) {
+    if (!hasValidExtension && !hasValidType) {
       return {
         valid: false,
-        error: `CSVファイル（.csv）を選択してください。選択されたファイル: ${file.name}`
+        error: `CSVファイル（.csv）を選択してください。選択されたファイルタイプ: ${file.type || '不明'}`
       };
     }
 
     // 大きいファイルの警告
-    if (file.size > 10 * 1024 * 1024) { // 10MB以上
+    if (file.size > LARGE_FILE_WARNING_SIZE) {
       return {
         valid: true,
         warning: `大きなファイル（${(file.size / 1024 / 1024).toFixed(2)}MB）です。処理に時間がかかる場合があります。`
@@ -424,88 +426,84 @@ const CSVViewerApp = () => {
     }
   };
 
-  // CSVファイルの解析
-  const parseCSVFile = (file) => {
+  // CSVファイルの解析（エンコーディングフォールバック付き）
+  const parseCSVFile = (file, encoding = 'UTF-8') => {
     setLoading(true);
-    setProcessingStatus(`ファイル "${file.name}" を読み込み中...`);
+    setProcessingStatus(`ファイル "${file.name}" を読み込み中... (エンコーディング: ${encoding})`);
     setError(null);
 
     // FileReaderを使用してファイルを読み込む
     const reader = new FileReader();
 
     reader.onload = (e) => {
-      try {
-        const csvText = e.target.result;
+      const csvText = e.target.result;
 
-        // 空のファイルチェック
-        if (!csvText || csvText.trim().length === 0) {
-          setError('ファイルにデータが含まれていません。CSVデータを含むファイルを選択してください。');
-          setLoading(false);
-          return;
-        }
-
-        // PapaParseでCSVを解析
-        Papa.parse(csvText, {
-          header: true,
-          skipEmptyLines: true,
-          preview: 5000, // パフォーマンスのために最初の5000行に制限
-          encoding: 'UTF-8', // UTF-8で固定
-          dynamicTyping: false, // すべて文字列として扱う
-          complete: (results) => {
-            // 解析エラーチェック
-            if (results.errors && results.errors.length > 0) {
-              const parsingWarnings = results.errors.filter(err => err.type === 'FieldMismatch' || err.type === 'Quotes');
-
-              if (parsingWarnings.length > 0) {
-                console.warn('CSV解析時に警告がありました:', results.errors);
-                setProcessingStatus(`警告: CSVファイルに${results.errors.length}個の軽微な問題がありましたが、処理を続行します。`);
-              }
-            }
-
-            // データが存在するかチェック
-            if (!results.data || results.data.length === 0) {
-              setError('CSVファイルにデータ行が見つかりません。ヘッダー行のみのファイルの可能性があります。');
-              setLoading(false);
-              return;
-            }
-
-            // ヘッダーチェック
-            if (!results.meta.fields || results.meta.fields.length === 0) {
-              setError('CSVファイルのヘッダー（列名）が見つかりません。');
-              setLoading(false);
-              return;
-            }
-
-            processCSVData(results, file.name);
-          },
-          error: (error) => {
-            setError(`CSV解析エラー: ${error.message}。ファイルが正しいCSV形式であることを確認してください。`);
-            setLoading(false);
-          }
-        });
-      } catch (err) {
-        setError(`ファイル処理中に予期しないエラーが発生しました: ${err.message}`);
+      // 空のファイルチェック
+      if (!csvText || csvText.trim().length === 0) {
+        setError('ファイルにデータが含まれていません。CSVデータを含むファイルを選択してください。');
         setLoading(false);
+        return;
+      }
+
+      // PapaParseでCSVを解析
+      Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        preview: 5000, // パフォーマンスのために最初の5000行に制限
+        dynamicTyping: false, // すべて文字列として扱う
+        complete: (results) => {
+          // 解析エラーチェック
+          if (results.errors && results.errors.length > 0) {
+            const parsingWarnings = results.errors.filter(err => err.type === 'FieldMismatch' || err.type === 'Quotes');
+
+            if (parsingWarnings.length > 0) {
+              console.warn('CSV解析時に警告がありました:', results.errors);
+              setProcessingStatus(`警告: CSVファイルに${results.errors.length}個の軽微な問題がありましたが、処理を続行します。`);
+            }
+          }
+
+          // データが存在するかチェック
+          if (!results.data || results.data.length === 0) {
+            setError('CSVファイルにデータ行が見つかりません。ヘッダー行のみのファイルの可能性があります。');
+            setLoading(false);
+            return;
+          }
+
+          // ヘッダーチェック
+          if (!results.meta.fields || results.meta.fields.length === 0) {
+            setError('CSVファイルのヘッダー（列名）が見つかりません。');
+            setLoading(false);
+            return;
+          }
+
+          processCSVData(results, file.name);
+        },
+        error: (error) => {
+          setError(`CSV解析エラー: ${error.message}。ファイルが正しいCSV形式であることを確認してください。`);
+          setLoading(false);
+        }
+      });
+    };
+
+    reader.onerror = () => {
+      // UTF-8で失敗した場合、Shift-JIS（または他のエンコーディング）で再試行
+      if (encoding === 'UTF-8') {
+        console.warn('UTF-8での読み込みに失敗しました。Shift-JISで再試行します。');
+        setProcessingStatus('UTF-8での読み込みに失敗しました。別のエンコーディングで再試行中...');
+        parseCSVFile(file, 'Shift-JIS');
+      } else {
+        setError(`ファイルの読み込みに失敗しました。ファイルが破損していないか、アクセス権限があるか確認してください。`);
+        setLoading(false);
+        console.error('FileReader error with encoding:', encoding);
       }
     };
 
-    reader.onerror = (error) => {
-      setError(`ファイルの読み込みに失敗しました。ファイルが破損していないか、アクセス権限があるか確認してください。`);
-      setLoading(false);
-      console.error('FileReader error:', error);
-    };
-
-    // UTF-8で読み込み、失敗した場合はShift-JISで再試行
-    try {
-      reader.readAsText(file, 'UTF-8');
-    } catch (err) {
-      setError(`ファイルの読み込みを開始できませんでした: ${err.message}`);
-      setLoading(false);
-    }
+    // 指定されたエンコーディングでファイルを読み込む
+    reader.readAsText(file, encoding);
   };
 
   // CSVデータの処理
-  const processCSVData = (results, currentFileName) => {
+  const processCSVData = useCallback((results, currentFileName) => {
     setProcessingStatus('データを処理中...');
 
     try {
@@ -542,7 +540,7 @@ const CSVViewerApp = () => {
       setError(`データの処理中にエラーが発生しました: ${e.message}`);
       setLoading(false);
     }
-  };
+  }, [loadColumnSettings, loadColumnOrder, loadColumnWidths]);
 
   // ソート関数
   const requestSort = (key) => {
@@ -598,64 +596,6 @@ const CSVViewerApp = () => {
       setCurrentPage(1); // 検索結果の1ページ目に移動
     }
   }, [searchTerm, searchColumn, data]);
-
-  // キーボードショートカット
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      // Ctrl/Cmd + O で ファイル選択
-      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
-        e.preventDefault();
-        fileInputRef.current?.click();
-      }
-
-      // Ctrl/Cmd + F で検索フォーカス
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-        e.preventDefault();
-        const searchInput = document.querySelector('input[placeholder="検索..."]');
-        searchInput?.focus();
-      }
-
-      // Ctrl/Cmd + E でJSON エクスポート
-      if ((e.ctrlKey || e.metaKey) && e.key === 'e' && data.length > 0) {
-        e.preventDefault();
-        exportJson();
-      }
-
-      // Ctrl/Cmd + S でCSV エクスポート
-      if ((e.ctrlKey || e.metaKey) && e.key === 's' && data.length > 0) {
-        e.preventDefault();
-        exportCsv();
-      }
-
-      // 矢印キーでページネーション (データがロードされている時のみ)
-      if (data.length > 0 && viewMode === 'table') {
-        const sortedDataLength = getSortedData(filteredData).length;
-        const maxPages = Math.ceil(sortedDataLength / rowsPerPage);
-
-        if (e.key === 'ArrowLeft' && currentPage > 1 && !e.target.matches('input, select, textarea')) {
-          changePage(currentPage - 1);
-        }
-        if (e.key === 'ArrowRight' && currentPage < maxPages && !e.target.matches('input, select, textarea')) {
-          changePage(currentPage + 1);
-        }
-      }
-
-      // Escapeキーでエラーをクリア
-      if (e.key === 'Escape' && error) {
-        setError(null);
-      }
-
-      // Ctrl/Cmd + K でサンプルデータ
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        loadSampleData();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, error, currentPage, rowsPerPage, filteredData, viewMode]);
 
   // 列の表示/非表示を切り替える
   const toggleColumn = (header) => {
@@ -784,14 +724,14 @@ const CSVViewerApp = () => {
     currentPage * rowsPerPage
   );
 
-  const changePage = (page) => {
+  const changePage = useCallback((page) => {
     if (page < 1) page = 1;
     if (page > totalPages) page = totalPages;
     setCurrentPage(page);
-  };
+  }, [totalPages]);
 
   // JSONエクスポート
-  const exportJson = () => {
+  const exportJson = useCallback(() => {
     if (filteredData.length === 0) return;
 
     const jsonString = JSON.stringify(filteredData, null, 2);
@@ -803,10 +743,10 @@ const CSVViewerApp = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, [filteredData, fileName]);
 
   // CSVエクスポート
-  const exportCsv = () => {
+  const exportCsv = useCallback(() => {
     if (filteredData.length === 0) return;
 
     const csv = Papa.unparse({
@@ -822,20 +762,20 @@ const CSVViewerApp = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, [filteredData, fileName, headers]);
 
   // JSONデータをクリップボードにコピー
-  const copyJsonToClipboard = () => {
+  const copyJsonToClipboard = useCallback(() => {
     if (currentData.length === 0) return;
 
     const jsonString = JSON.stringify(currentData, null, 2);
     navigator.clipboard.writeText(jsonString)
       .then(() => alert('JSONデータをクリップボードにコピーしました'))
       .catch(err => console.error('コピーに失敗しました', err));
-  };
+  }, [currentData]);
 
   // サンプルCSVデータを読み込む
-  const loadSampleData = () => {
+  const loadSampleData = useCallback(() => {
     // サンプルCSVデータ（簡易版）
     const sampleCSV = `企業ID,企業名,業種,従業員数,住所,売上,設立年,代表者,資本金,上場
 1,サンプル株式会社,IT,100,東京都渋谷区,10000000,2010,山田太郎,5000000,非上場
@@ -853,7 +793,64 @@ const CSVViewerApp = () => {
         processCSVData(results, 'sample_data.csv');
       }
     });
-  };
+  }, [processCSVData]);
+
+  // キーボードショートカット
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Ctrl/Cmd + O で ファイル選択
+      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        e.preventDefault();
+        fileInputRef.current?.click();
+      }
+
+      // Ctrl/Cmd + F で検索フォーカス
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[placeholder="検索..."]');
+        searchInput?.focus();
+      }
+
+      // Ctrl/Cmd + E でJSON エクスポート
+      if ((e.ctrlKey || e.metaKey) && e.key === 'e' && data.length > 0) {
+        e.preventDefault();
+        exportJson();
+      }
+
+      // Ctrl/Cmd + S でCSV エクスポート
+      if ((e.ctrlKey || e.metaKey) && e.key === 's' && data.length > 0) {
+        e.preventDefault();
+        exportCsv();
+      }
+
+      // 矢印キーでページネーション (データがロードされている時のみ)
+      if (data.length > 0 && viewMode === 'table') {
+        const sortedDataLength = getSortedData(filteredData).length;
+        const maxPages = Math.ceil(sortedDataLength / rowsPerPage);
+
+        if (e.key === 'ArrowLeft' && currentPage > 1 && !e.target.matches('input, select, textarea')) {
+          changePage(currentPage - 1);
+        }
+        if (e.key === 'ArrowRight' && currentPage < maxPages && !e.target.matches('input, select, textarea')) {
+          changePage(currentPage + 1);
+        }
+      }
+
+      // Escapeキーでエラーをクリア
+      if (e.key === 'Escape' && error) {
+        setError(null);
+      }
+
+      // Ctrl/Cmd + K でサンプルデータ
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        loadSampleData();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [data, error, currentPage, rowsPerPage, filteredData, viewMode, exportJson, exportCsv, changePage, loadSampleData, getSortedData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
