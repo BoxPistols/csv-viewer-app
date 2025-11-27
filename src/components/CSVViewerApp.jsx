@@ -1378,8 +1378,8 @@ const CSVViewerApp = () => {
                     <tbody>
                       {currentData.length > 0 ? (
                         currentData.map((row, rowIndex) => (
-                          <tr key={rowIndex} className={`transition-colors hover:bg-blue-50 dark:hover:bg-gray-700 ${rowIndex % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-750'}`}>
-                            <td className="py-3 px-4 border-b border-gray-200 dark:border-gray-700 sticky left-0 bg-inherit z-10 font-medium text-gray-700 dark:text-gray-300">
+                          <tr key={rowIndex} className={`transition-colors hover:bg-blue-50 dark:hover:bg-gray-700 ${rowIndex % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-900'}`}>
+                            <td className={`py-3 px-4 border-b border-gray-200 dark:border-gray-700 sticky left-0 z-10 font-medium text-gray-700 dark:text-gray-300 ${rowIndex % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-900'}`}>
                               {(currentPage - 1) * rowsPerPage + rowIndex + 1}
                             </td>
                             {columnOrder
