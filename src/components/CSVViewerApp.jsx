@@ -38,6 +38,9 @@ const CSVViewerApp = () => {
   // ヘッダー折り返し設定
   const [headerWrapMode, setHeaderWrapMode] = useState(false);
 
+  // ヘッダー/アップロードセクション折りたたみ
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+
   // 新しい状態変数
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
@@ -776,13 +779,58 @@ const CSVViewerApp = () => {
 
   // サンプルCSVデータを読み込む
   const loadSampleData = useCallback(() => {
-    // サンプルCSVデータ（簡易版）
+    // サンプルCSVデータ（50件）
     const sampleCSV = `企業ID,企業名,業種,従業員数,住所,売上,設立年,代表者,資本金,上場
 1,サンプル株式会社,IT,100,東京都渋谷区,10000000,2010,山田太郎,5000000,非上場
 2,テスト技研,製造,50,大阪府大阪市,5000000,2005,佐藤次郎,3000000,非上場
 3,フューチャー開発,不動産,30,福岡県福岡市,7500000,2015,鈴木花子,2000000,非上場
 4,グローバルコンサルティング,コンサルティング,200,東京都千代田区,30000000,2000,高橋一郎,10000000,上場
-5,イノベーションテクノロジー,IT,150,神奈川県横浜市,20000000,2008,伊藤誠,8000000,非上場`;
+5,イノベーションテクノロジー,IT,150,神奈川県横浜市,20000000,2008,伊藤誠,8000000,非上場
+6,東京フードサービス,飲食,80,東京都新宿区,12000000,2012,中村健太,4000000,非上場
+7,デジタルマーケティング,広告,45,東京都港区,8500000,2016,小林美咲,3500000,非上場
+8,関西物流,物流,120,大阪府堺市,15000000,2003,田中正雄,6000000,非上場
+9,北海道農産,農業,25,北海道札幌市,4500000,2018,木村大地,1500000,非上場
+10,九州エナジー,エネルギー,90,福岡県北九州市,25000000,2007,松本直人,12000000,上場
+11,東北メディカル,医療,200,宮城県仙台市,35000000,2001,井上智子,15000000,上場
+12,中部オートモーティブ,自動車,350,愛知県名古屋市,50000000,1998,渡辺修一,20000000,上場
+13,関東建設,建設,180,埼玉県さいたま市,28000000,2004,加藤勇太,9000000,非上場
+14,西日本通信,通信,95,広島県広島市,18000000,2009,山本陽子,7000000,非上場
+15,四国観光,旅行,40,香川県高松市,6000000,2014,吉田康平,2500000,非上場
+16,沖縄リゾート,ホテル,150,沖縄県那覇市,22000000,2006,佐々木真理,8500000,非上場
+17,首都圏不動産,不動産,65,東京都中央区,40000000,2002,斎藤健,11000000,上場
+18,北陸精密工業,製造,220,石川県金沢市,32000000,1995,西村正明,13000000,上場
+19,南九州食品,食品,75,熊本県熊本市,9500000,2011,森田幸子,4500000,非上場
+20,東海運輸,運輸,130,静岡県静岡市,17000000,2000,清水太一,7500000,非上場
+21,北信越IT,IT,55,新潟県新潟市,7000000,2017,原田真一,3000000,非上場
+22,中国商事,商社,85,岡山県岡山市,14000000,2008,藤田美穂,5500000,非上場
+23,近畿製薬,製薬,280,大阪府吹田市,45000000,1990,村上誠,18000000,上場
+24,関西電機,電機,190,兵庫県神戸市,38000000,1997,中島裕介,14000000,上場
+25,東京アパレル,アパレル,60,東京都目黒区,11000000,2013,岡田由美,4000000,非上場
+26,名古屋機械,機械,240,愛知県豊田市,42000000,1993,長谷川博,16000000,上場
+27,横浜海運,海運,100,神奈川県横浜市,20000000,2005,池田隆,8000000,非上場
+28,大阪金属,金属,160,大阪府東大阪市,26000000,1999,石井正和,10000000,非上場
+29,札幌ソフトウェア,IT,70,北海道札幌市,9000000,2015,高木健一,3500000,非上場
+30,福岡商会,卸売,110,福岡県福岡市,19000000,2002,山下美紀,6500000,非上場
+31,仙台エレクトロニクス,電子部品,140,宮城県仙台市,24000000,2006,小川達也,9500000,非上場
+32,京都伝統工芸,工芸,35,京都府京都市,5500000,2010,前田雅彦,2000000,非上場
+33,神戸ファッション,アパレル,50,兵庫県神戸市,8000000,2014,川上真由,3000000,非上場
+34,広島重工業,重工業,300,広島県呉市,55000000,1985,藤本勝,22000000,上場
+35,千葉バイオテック,バイオ,80,千葉県千葉市,12500000,2012,中田愛,5000000,非上場
+36,茨城農機,農業機械,95,茨城県つくば市,16000000,2004,久保田剛,6000000,非上場
+37,栃木プラスチック,化学,70,栃木県宇都宮市,10500000,2009,小島康子,4000000,非上場
+38,群馬自動車部品,自動車部品,180,群馬県太田市,30000000,1996,野口秀樹,12000000,上場
+39,長野精密機器,精密機器,120,長野県松本市,22000000,2001,宮崎直美,8500000,非上場
+40,山梨ワイナリー,飲料,45,山梨県甲府市,7500000,2008,河野浩二,3000000,非上場
+41,静岡茶業,食品,55,静岡県静岡市,9500000,2007,大野美香,3500000,非上場
+42,岐阜セラミック,窯業,85,岐阜県多治見市,14500000,2003,松井健太郎,5500000,非上場
+43,三重石油化学,化学,200,三重県四日市市,36000000,1992,福田正人,15000000,上場
+44,滋賀環境テック,環境,60,滋賀県大津市,10000000,2016,坂本裕子,4000000,非上場
+45,奈良観光開発,観光,40,奈良県奈良市,6500000,2011,上田誠一,2500000,非上場
+46,和歌山水産,水産,75,和歌山県和歌山市,11500000,2005,杉本和也,4500000,非上場
+47,鳥取農園,農業,30,鳥取県鳥取市,5000000,2018,橋本恵子,1800000,非上場
+48,島根IT,IT,40,島根県松江市,6000000,2017,内田浩,2200000,非上場
+49,山口化学工業,化学,150,山口県周南市,27000000,1998,村田正義,11000000,非上場
+50,徳島製紙,製紙,90,徳島県徳島市,15500000,2000,青木由紀,6500000,非上場`;
 
     // サンプルデータを解析
     Papa.parse(sampleCSV, {
@@ -853,177 +901,199 @@ const CSVViewerApp = () => {
   }, [data, error, currentPage, rowsPerPage, filteredData, viewMode, exportJson, exportCsv, changePage, loadSampleData, getSortedData]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="w-full px-3 py-4 sm:px-4 sm:py-6 md:p-6 max-w-7xl mx-auto">
-        {/* ヘッダーセクション - モダンなデザイン */}
-        <div className="mb-6 sm:mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-3 sm:mb-4 shadow-lg">
-            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent px-2">
-            CSV Viewer
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 max-w-2xl mx-auto px-4">
-            CSVファイルを美しく表示・分析。データを視覚化し、検索、エクスポートが簡単にできます。
-          </p>
-        </div>
-
-      {/* ファイルアップロード - モダンなカードデザイン */}
-      <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 transition-all duration-300 hover:shadow-2xl">
-        <div
-          className={`p-10 border-2 border-dashed rounded-xl transition-all duration-300 ${
-            isDragActive
-              ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 scale-105 shadow-lg'
-              : 'border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 hover:border-blue-400 hover:bg-blue-50'
-          }`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!isDragActive) setIsDragActive(true);
-          }}
-          onDragEnter={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragActive(true);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragActive(false);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragActive(false);
-
-            const files = e.dataTransfer.files;
-            if (files && files.length > 0) {
-              const file = files[0];
-              const validation = validateFile(file);
-
-              if (!validation.valid) {
-                setError(validation.error);
-                setLoading(false);
-                return;
-              }
-
-              if (validation.warning) {
-                console.warn(validation.warning);
-                setProcessingStatus(validation.warning);
-              }
-
-              setFileName(file.name);
-              parseCSVFile(file);
-            } else {
-              setError('ファイルが選択されていません');
-            }
-          }}
-        >
-          <div className="flex flex-col items-center">
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
-              ref={fileInputRef}
-              className="hidden"
-              aria-label="CSVファイルを選択"
-              id="csv-file-input"
-            />
-
-            {/* アップロードアイコン */}
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mb-6 shadow-lg transform transition-transform hover:scale-110">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden">
+      {/* コンパクトヘッダーバー - Excel風 */}
+      <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="flex items-center justify-between px-3 py-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-
-            <h3 className="text-xl font-semibold mb-3 text-gray-800">ファイルをアップロード</h3>
-            <p className="text-sm text-gray-500 mb-6 text-center">
-              ファイルをドラッグ＆ドロップ、またはクリックして選択
-            </p>
-
-            <button
-              onClick={() => fileInputRef.current.click()}
-              className="mb-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
-            >
-              CSVファイルを選択
-            </button>
-
-            <div className="flex items-center my-4">
-              <div className="h-px bg-gray-300 w-16"></div>
-              <p className="text-sm text-gray-400 mx-4">または</p>
-              <div className="h-px bg-gray-300 w-16"></div>
-            </div>
-
-            <button
-              onClick={loadSampleData}
-              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-300"
-            >
-              サンプルデータを表示
-            </button>
-
+            <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+              CSV Viewer
+            </h1>
             {fileName && (
-              <div className="mt-6 px-4 py-2 bg-blue-100 rounded-lg border border-blue-200">
-                <p className="text-sm font-medium text-blue-800 flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  {fileName}
-                </p>
-              </div>
+              <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                - {fileName}
+              </span>
             )}
           </div>
+          <button
+            onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title={isHeaderCollapsed ? "ツールバーを展開" : "ツールバーを折りたたむ"}
+          >
+            <svg className={`w-5 h-5 text-gray-600 dark:text-gray-300 transition-transform ${isHeaderCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      {/* 読み込み中表示 - モダンなアニメーション */}
-      {loading && (
-        <div className="bg-white rounded-2xl shadow-xl p-10 mb-8">
-          <div className="flex flex-col items-center justify-center">
-            <div className="relative w-24 h-24 mb-6">
-              <div className="absolute top-0 left-0 w-full h-full border-4 border-blue-200 rounded-full"></div>
-              <div className="absolute top-0 left-0 w-full h-full border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+      {/* メインコンテンツ */}
+      <div className="flex-1 overflow-hidden flex flex-col p-2 sm:p-3">
+
+      {/* ファイルアップロード - 折りたたみ可能なコンパクトセクション */}
+      {!isHeaderCollapsed && (
+        <div className={`flex-shrink-0 bg-white dark:bg-gray-800 rounded-xl shadow-md mb-2 transition-all duration-300 ${data.length > 0 ? 'p-3' : 'p-4'}`}>
+          {data.length === 0 ? (
+            <div
+              className={`p-6 border-2 border-dashed rounded-lg transition-all duration-300 ${
+                isDragActive
+                  ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50'
+                  : 'border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 hover:border-blue-400 hover:bg-blue-50'
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!isDragActive) setIsDragActive(true);
+              }}
+              onDragEnter={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragActive(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragActive(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragActive(false);
+
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                  const file = files[0];
+                  const validation = validateFile(file);
+
+                  if (!validation.valid) {
+                    setError(validation.error);
+                    setLoading(false);
+                    return;
+                  }
+
+                  if (validation.warning) {
+                    console.warn(validation.warning);
+                    setProcessingStatus(validation.warning);
+                  }
+
+                  setFileName(file.name);
+                  parseCSVFile(file);
+                } else {
+                  setError('ファイルが選択されていません');
+                }
+              }}
+            >
+              <div className="flex flex-col items-center">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                  ref={fileInputRef}
+                  className="hidden"
+                  aria-label="CSVファイルを選択"
+                  id="csv-file-input"
+                />
+
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mb-4 shadow-lg">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                </div>
+
+                <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">ファイルをアップロード</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">
+                  ドラッグ＆ドロップ、またはクリックして選択
+                </p>
+
+                <div className="flex flex-wrap gap-3 justify-center">
+                  <button
+                    onClick={() => fileInputRef.current.click()}
+                    className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transform transition-all duration-200 hover:scale-105 text-sm"
+                  >
+                    CSVファイルを選択
+                  </button>
+                  <button
+                    onClick={loadSampleData}
+                    className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transform transition-all duration-200 hover:scale-105 text-sm"
+                  >
+                    サンプルデータを表示
+                  </button>
+                </div>
               </div>
             </div>
-            <p className="text-xl font-semibold text-gray-800 mb-2">{processingStatus}</p>
-            <div className="w-80 h-2 bg-gray-200 rounded-full overflow-hidden shadow-inner">
-              <div className="h-full bg-gradient-to-r from-blue-500 to-purple-600 animate-pulse"></div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                ref={fileInputRef}
+                className="hidden"
+                aria-label="CSVファイルを選択"
+                id="csv-file-input"
+              />
+              <button
+                onClick={() => fileInputRef.current.click()}
+                className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium shadow-sm hover:shadow-md transform transition-all duration-200 hover:scale-105 text-xs flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                ファイル選択
+              </button>
+              <button
+                onClick={loadSampleData}
+                className="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg font-medium shadow-sm hover:shadow-md transform transition-all duration-200 hover:scale-105 text-xs"
+              >
+                サンプルデータ
+              </button>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {totalRows.toLocaleString()}件
+                {searchTerm && ` (検索結果: ${filteredData.length.toLocaleString()}件)`}
+              </span>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* 読み込み中表示 - コンパクト */}
+      {loading && (
+        <div className="flex-shrink-0 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-2">
+          <div className="flex items-center gap-3">
+            <div className="relative w-8 h-8">
+              <div className="absolute top-0 left-0 w-full h-full border-3 border-blue-200 rounded-full"></div>
+              <div className="absolute top-0 left-0 w-full h-full border-3 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{processingStatus}</p>
           </div>
         </div>
       )}
 
-      {/* エラー表示 - モダンなデザイン */}
+      {/* エラー表示 - コンパクト */}
       {error && (
         <div
-          className="bg-white rounded-2xl shadow-xl p-6 mb-8 border-l-4 border-red-500"
+          className="flex-shrink-0 bg-red-50 dark:bg-red-900/30 rounded-lg p-3 mb-2 border-l-4 border-red-500"
           role="alert"
           aria-live="assertive"
         >
-          <div className="flex items-start justify-between">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-semibold text-red-800">エラーが発生しました</h3>
-                <p className="mt-1 text-sm text-red-700">{error}</p>
-              </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
             </div>
             <button
               onClick={() => setError(null)}
-              className="ml-4 text-red-400 hover:text-red-600 transition-colors"
+              className="text-red-400 hover:text-red-600 transition-colors p-1"
               aria-label="エラーメッセージを閉じる"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -1034,282 +1104,191 @@ const CSVViewerApp = () => {
       {/* データが読み込まれている場合のみ表示 */}
       {!loading && data.length > 0 && (
         <>
-          {/* コントロールパネル - モダンなデザイン */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-3 sm:p-4 md:p-6 mb-4 sm:mb-6">
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 items-stretch sm:items-center">
-              {/* 検索 */}
-              <div className="w-full sm:flex-grow sm:max-w-md">
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-0">
-                  <div className="relative flex-grow">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
+          {/* コントロールパネル - コンパクトなツールバー */}
+          {!isHeaderCollapsed && (
+            <div className="flex-shrink-0 bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 mb-2">
+              <div className="flex flex-wrap gap-2 items-center">
+                {/* 検索 */}
+                <div className="flex-grow max-w-xs">
+                  <div className="flex">
+                    <div className="relative flex-grow">
+                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                        <svg className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="検索..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8 pr-2 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-l-lg w-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      placeholder="検索..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl sm:rounded-l-xl sm:rounded-r-none w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base min-h-[44px]"
-                    />
-                  </div>
-                  <select
-                    value={searchColumn}
-                    onChange={(e) => setSearchColumn(e.target.value)}
-                    className="px-3 py-2.5 border sm:border-l-0 border-gray-300 dark:border-gray-600 rounded-xl sm:rounded-r-xl sm:rounded-l-none bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base min-h-[44px]"
-                  >
-                    <option value="all">すべての列</option>
-                    {headers.map((header) => (
-                      <option key={header} value={header}>
-                        {header}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* 表示モード切り替え */}
-              <div className="flex bg-gray-100 rounded-xl p-1 shadow-inner">
-                <button
-                  onClick={() => setViewMode('table')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center ${
-                    viewMode === 'table'
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md'
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  テーブル
-                </button>
-                <button
-                  onClick={() => setViewMode('json')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center ${
-                    viewMode === 'json'
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md'
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                  </svg>
-                  JSON
-                </button>
-              </div>
-
-              {/* データエクスポート */}
-              <button
-                onClick={exportJson}
-                className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-medium shadow-md hover:shadow-lg transform transition-all duration-200 hover:scale-105 flex items-center"
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                JSON保存
-              </button>
-
-              <button
-                onClick={exportCsv}
-                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-medium shadow-md hover:shadow-lg transform transition-all duration-200 hover:scale-105 flex items-center"
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                CSV保存
-              </button>
-
-              {viewMode === 'json' && (
-                <button
-                  onClick={copyJsonToClipboard}
-                  className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl font-medium shadow-md hover:shadow-lg transform transition-all duration-200 hover:scale-105 flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  JSONコピー
-                </button>
-              )}
-
-              {/* 全画面表示ボタン（テーブルモードのみ） */}
-              {viewMode === 'table' && (
-                <button
-                  onClick={toggleFullScreen}
-                  className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-medium shadow-md hover:shadow-lg transform transition-all duration-200 hover:scale-105 flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                  </svg>
-                  {isFullScreen ? '解除' : 'フル画面'}
-                </button>
-              )}
-
-              {/* 列表示設定（テーブルモードのみ） */}
-              {viewMode === 'table' && (
-                <div className="relative ml-auto">
-                  <button
-                    className="px-4 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl font-medium shadow-md hover:shadow-lg transform transition-all duration-200 hover:scale-105 flex items-center"
-                    onClick={() => setIsColumnSelectorOpen(prev => !prev)}
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                    </svg>
-                    列の設定
-                  </button>
-                  {isColumnSelectorOpen && (
-                    <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 z-30 max-h-80 overflow-y-auto w-72">
-                    <div className="flex justify-between mb-3 pb-3 border-b border-gray-200">
-                      <button
-                        className="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all"
-                        onClick={() => toggleAllColumns(true)}
-                      >
-                        すべて表示
-                      </button>
-                      <button
-                        className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all"
-                        onClick={() => toggleAllColumns(false)}
-                      >
-                        すべて非表示
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      {headers.map(header => (
-                        <label key={header} className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
-                          <input
-                            type="checkbox"
-                            id={`col-${header}`}
-                            checked={selectedColumns.includes(header)}
-                            onChange={() => toggleColumn(header)}
-                            className="mr-3 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700 truncate">{header}</span>
-                        </label>
+                    <select
+                      value={searchColumn}
+                      onChange={(e) => setSearchColumn(e.target.value)}
+                      className="px-2 py-1.5 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                    >
+                      <option value="all">全列</option>
+                      {headers.map((header) => (
+                        <option key={header} value={header}>
+                          {header}
+                        </option>
                       ))}
-                    </div>
-                    </div>
-                  )}
+                    </select>
+                  </div>
                 </div>
-              )}
 
-              {/* 列幅リセットボタン */}
-              {viewMode === 'table' && (
-                <button
-                  onClick={resetColumnWidths}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 shadow-sm hover:shadow-md transition-all duration-200 flex items-center"
-                  title="列幅をリセット"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  リセット
-                </button>
-              )}
-            </div>
-          </div>
+                {/* 表示モード切り替え */}
+                <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setViewMode('table')}
+                    className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                      viewMode === 'table'
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-800'
+                    }`}
+                  >
+                    テーブル
+                  </button>
+                  <button
+                    onClick={() => setViewMode('json')}
+                    className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                      viewMode === 'json'
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-800'
+                    }`}
+                  >
+                    JSON
+                  </button>
+                </div>
 
-          {/* 表示オプション設定 */}
-          {viewMode === 'table' && (
-            <div className="bg-white rounded-2xl shadow-lg p-5 mb-6">
-              <div className="flex flex-wrap items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">表示件数:</span>
+                {/* 表示件数 */}
+                {viewMode === 'table' && (
                   <select
                     value={rowsPerPage}
                     onChange={(e) => handleRowsPerPageChange(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 text-xs"
                     disabled={showAllRows}
                   >
                     {rowsPerPageOptions.map(option => (
                       <option key={option} value={option}>{option}件</option>
                     ))}
                   </select>
-                </div>
+                )}
 
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={showAllRows}
-                    onChange={(e) => toggleShowAllRows(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                  <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">全件表示</span>
-                </label>
+                {/* エクスポートボタン */}
+                <button
+                  onClick={exportJson}
+                  className="px-2 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg text-xs font-medium shadow-sm hover:shadow-md transition-all"
+                  title="JSON保存"
+                >
+                  JSON
+                </button>
+                <button
+                  onClick={exportCsv}
+                  className="px-2 py-1.5 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg text-xs font-medium shadow-sm hover:shadow-md transition-all"
+                  title="CSV保存"
+                >
+                  CSV
+                </button>
 
-                {/* セル表示モードの設定 */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">セル表示:</span>
-                  <select
-                    value={cellDisplayMode}
-                    onChange={(e) => setCellDisplayMode(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                {viewMode === 'json' && (
+                  <button
+                    onClick={copyJsonToClipboard}
+                    className="px-2 py-1.5 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg text-xs font-medium shadow-sm hover:shadow-md transition-all"
                   >
-                    <option value="singleline">1行（折り返しなし）</option>
-                    <option value="ellipsis">1行（省略表示）</option>
-                  </select>
-                </div>
+                    コピー
+                  </button>
+                )}
 
-                {/* ヘッダー折り返しトグルスイッチ */}
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-700">見出し:</span>
-                  <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                    <span className="text-xs text-gray-600 px-2">改行なし</span>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={headerWrapMode}
-                        onChange={() => setHeaderWrapMode(!headerWrapMode)}
-                      />
-                      <span className="slider"></span>
-                    </label>
-                    <span className="text-xs text-gray-600 px-2">改行あり</span>
-                  </div>
-                </div>
+                {/* テーブル専用ボタン */}
+                {viewMode === 'table' && (
+                  <>
+                    <button
+                      onClick={toggleFullScreen}
+                      className="px-2 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg text-xs font-medium shadow-sm hover:shadow-md transition-all"
+                      title={isFullScreen ? '解除' : 'フル画面'}
+                    >
+                      {isFullScreen ? '解除' : '全画面'}
+                    </button>
+
+                    {/* 列設定 */}
+                    <div className="relative">
+                      <button
+                        className="px-2 py-1.5 bg-gray-500 text-white rounded-lg text-xs font-medium shadow-sm hover:shadow-md transition-all"
+                        onClick={() => setIsColumnSelectorOpen(prev => !prev)}
+                      >
+                        列設定
+                      </button>
+                      {isColumnSelectorOpen && (
+                        <div className="absolute right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl p-3 z-30 max-h-60 overflow-y-auto w-56">
+                          <div className="flex justify-between mb-2 pb-2 border-b border-gray-200 dark:border-gray-600">
+                            <button
+                              className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-all"
+                              onClick={() => toggleAllColumns(true)}
+                            >
+                              全表示
+                            </button>
+                            <button
+                              className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+                              onClick={() => toggleAllColumns(false)}
+                            >
+                              全非表示
+                            </button>
+                          </div>
+                          <div className="space-y-1">
+                            {headers.map(header => (
+                              <label key={header} className="flex items-center p-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer text-xs">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedColumns.includes(header)}
+                                  onChange={() => toggleColumn(header)}
+                                  className="mr-2 w-3 h-3 text-blue-600 rounded"
+                                />
+                                <span className="text-gray-700 dark:text-gray-300 truncate">{header}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={resetColumnWidths}
+                      className="px-2 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+                      title="列幅リセット"
+                    >
+                      リセット
+                    </button>
+
+                    {/* セル表示モード */}
+                    <select
+                      value={cellDisplayMode}
+                      onChange={(e) => setCellDisplayMode(e.target.value)}
+                      className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 text-xs"
+                    >
+                      <option value="singleline">1行</option>
+                      <option value="ellipsis">省略</option>
+                    </select>
+                  </>
+                )}
               </div>
             </div>
           )}
 
-          {/* データサマリー */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-100">
-            <div className="flex flex-wrap items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">総レコード数</p>
-                  <p className="text-lg font-bold text-gray-800">{totalRows.toLocaleString()}行</p>
-                </div>
-              </div>
-              {searchTerm && (
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium">検索結果</p>
-                    <p className="text-lg font-bold text-gray-800">{filteredData.length.toLocaleString()}行</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* テーブル表示 */}
+          {/* テーブル表示 - Excel風フルハイト */}
           {viewMode === 'table' && (
             <>
               <div className={`${isFullScreen ?
-                'fixed inset-0 z-50 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6' :
-                'bg-white rounded-2xl shadow-xl overflow-hidden'}`}>
+                'fixed inset-0 z-50 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-2 flex flex-col' :
+                'flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden flex flex-col min-h-0'}`}>
                 {isFullScreen && (
-                  <div className="flex justify-end mb-4">
+                  <div className="flex-shrink-0 flex justify-end mb-2">
                     <button
                       onClick={toggleFullScreen}
-                      className="px-4 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-105 flex items-center"
+                      className="px-3 py-1.5 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-lg text-xs font-medium shadow-md hover:shadow-lg transition-all flex items-center"
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1318,7 +1297,7 @@ const CSVViewerApp = () => {
                     </button>
                   </div>
                 )}
-                <div className="overflow-x-auto max-h-[70vh]">
+                <div className="flex-1 overflow-auto min-h-0">
                 <div className="table-container">
                   <table className="min-w-full bg-white" ref={tableRef}>
                     <thead className="sticky top-0 z-20">
@@ -1438,48 +1417,42 @@ const CSVViewerApp = () => {
                   </div>
                 )}
 
-                {/* ページネーション */}
-                <div className={`${isFullScreen ?
-                  'fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 shadow-2xl' : 'mt-6'}`}>
-                  <div className="bg-white rounded-xl shadow-lg p-4 flex flex-wrap justify-between items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <div className="px-3 py-1 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg">
-                        <span className="text-sm font-medium text-gray-700">
-                          {filteredData.length}件中 {filteredData.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} - {Math.min(currentPage * rowsPerPage, filteredData.length)} 件表示
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
+                {/* ページネーション - コンパクト */}
+                <div className={`flex-shrink-0 ${isFullScreen ?
+                  'fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 z-50' : 'border-t border-gray-200 dark:border-gray-700 p-2'}`}>
+                  <div className="flex flex-wrap justify-between items-center gap-2">
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      {filteredData.length}件中 {filteredData.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0}-{Math.min(currentPage * rowsPerPage, filteredData.length)}
+                    </span>
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() => changePage(1)}
                         disabled={currentPage === 1 || totalPages === 0}
-                        className="px-3 py-2 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium text-gray-700"
+                        className="px-2 py-1 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-gray-700 dark:text-gray-300"
                       >
                         &laquo;
                       </button>
                       <button
                         onClick={() => changePage(currentPage - 1)}
                         disabled={currentPage === 1 || totalPages === 0}
-                        className="px-3 py-2 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium text-gray-700"
+                        className="px-2 py-1 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-gray-700 dark:text-gray-300"
                       >
                         &lsaquo;
                       </button>
-
-                      <div className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold shadow-md">
-                        {currentPage} / {totalPages || 1}
-                      </div>
-
+                      <span className="px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded text-xs font-medium">
+                        {currentPage}/{totalPages || 1}
+                      </span>
                       <button
                         onClick={() => changePage(currentPage + 1)}
                         disabled={currentPage === totalPages || totalPages === 0}
-                        className="px-3 py-2 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium text-gray-700"
+                        className="px-2 py-1 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-gray-700 dark:text-gray-300"
                       >
                         &rsaquo;
                       </button>
                       <button
                         onClick={() => changePage(totalPages)}
                         disabled={currentPage === totalPages || totalPages === 0}
-                        className="px-3 py-2 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium text-gray-700"
+                        className="px-2 py-1 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-gray-700 dark:text-gray-300"
                       >
                         &raquo;
                       </button>
@@ -1490,24 +1463,24 @@ const CSVViewerApp = () => {
             </>
           )}
 
-          {/* JSON表示 */}
+          {/* JSON表示 - フルハイト */}
           {viewMode === 'json' && (
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-              <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-6 py-3 flex items-center justify-between">
+            <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden flex flex-col min-h-0">
+              <div className="flex-shrink-0 bg-gradient-to-r from-gray-700 to-gray-800 px-4 py-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                   </svg>
-                  <span className="text-white font-semibold">JSON Output</span>
+                  <span className="text-white text-sm font-medium">JSON Output</span>
                 </div>
                 <div className="flex gap-1">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                  <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
                 </div>
               </div>
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 p-6 overflow-auto max-h-96">
-                <pre className="whitespace-pre-wrap text-sm font-mono text-emerald-400">
+              <div className="flex-1 bg-gradient-to-br from-gray-900 to-gray-800 p-4 overflow-auto min-h-0">
+                <pre className="whitespace-pre-wrap text-xs font-mono text-emerald-400">
                   {JSON.stringify(currentData, null, 2)}
                 </pre>
               </div>
@@ -1516,90 +1489,55 @@ const CSVViewerApp = () => {
         </>
       )}
 
-      {/* ヘルプ情報 */}
+      {/* ヘルプ情報 - コンパクト */}
       {!loading && data.length === 0 && !error && (
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">はじめに</h2>
-          </div>
-
-          <p className="mb-6 text-gray-700 leading-relaxed">
-            このアプリはCSVファイルを簡単に表示・分析するためのツールです。
-            上部の「CSVファイルを選択」ボタンからファイルをアップロードするか、
-            「サンプルデータを表示」ボタンでデモデータを確認できます。
-          </p>
-
-          <h3 className="font-semibold text-lg mb-4 flex items-center gap-2 text-gray-800">
-            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            できること：
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-            {[
-              'CSVファイルのテーブル表示とJSON表示',
-              'データの検索とフィルタリング',
-              '表示する列の選択（設定は自動保存）',
-              '列の並べ替え（ドラッグ＆ドロップ）',
-              '列幅の調整（境界線をドラッグ）',
-              'セル表示の切り替え',
-              'ホバーでツールチップ表示',
-              'ヘッダー折り返し設定',
-              'データのソート機能',
-              '表示件数の制御',
-              'CSVまたはJSON形式でエクスポート',
-              'JSON形式でクリップボードコピー',
-              'フルスクリーン表示モード'
-            ].map((feature, index) => (
-              <div key={index} className="flex items-start gap-2 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
-                <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        <div className="flex-1 overflow-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-sm text-gray-700">{feature}</span>
               </div>
-            ))}
-          </div>
-
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 mb-6">
-            <div className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <p className="text-sm text-amber-800">
-                <strong>注意:</strong> CSVファイルは必ずUTF-8エンコーディングで保存してください。最大ファイルサイズ: 50MB
-              </p>
+              <h2 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">使い方</h2>
             </div>
-          </div>
 
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
-            <h3 className="font-semibold text-lg mb-3 flex items-center gap-2 text-gray-800">
-              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-              キーボードショートカット
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
+              CSVファイルをアップロードするか、サンプルデータで機能をお試しください。
+            </p>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
               {[
-                { keys: 'Ctrl/Cmd + O', action: 'ファイルを開く' },
-                { keys: 'Ctrl/Cmd + F', action: '検索フォーカス' },
-                { keys: 'Ctrl/Cmd + E', action: 'JSONエクスポート' },
-                { keys: 'Ctrl/Cmd + S', action: 'CSVエクスポート' },
-                { keys: 'Ctrl/Cmd + K', action: 'サンプルデータ表示' },
-                { keys: '← →', action: 'ページ移動' },
-                { keys: 'Esc', action: 'エラーを閉じる' }
-              ].map((shortcut, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg border border-blue-100">
-                  <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded-md shadow-sm">
-                    {shortcut.keys}
-                  </kbd>
-                  <span className="text-sm text-gray-600 ml-3">{shortcut.action}</span>
+                'テーブル/JSON表示',
+                '検索・フィルタ',
+                '列の選択・並替',
+                'ソート機能',
+                'CSV/JSON出力',
+                '全画面表示',
+                '列幅調整',
+                'ツールチップ'
+              ].map((feature, index) => (
+                <div key={index} className="flex items-center gap-1 p-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 rounded text-xs text-gray-700 dark:text-gray-300">
+                  <svg className="w-3 h-3 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {feature}
                 </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="text-gray-500 dark:text-gray-400">ショートカット:</span>
+              {[
+                { keys: 'Ctrl+O', action: '開く' },
+                { keys: 'Ctrl+F', action: '検索' },
+                { keys: 'Ctrl+K', action: 'サンプル' },
+                { keys: '←→', action: 'ページ' }
+              ].map((shortcut, index) => (
+                <span key={index} className="text-gray-600 dark:text-gray-400">
+                  <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs">{shortcut.keys}</kbd>
+                  <span className="ml-1">{shortcut.action}</span>
+                </span>
               ))}
             </div>
           </div>
