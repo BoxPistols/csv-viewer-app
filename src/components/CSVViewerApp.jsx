@@ -41,6 +41,9 @@ const CSVViewerApp = () => {
   // ヘッダー/アップロードセクション折りたたみ
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
 
+  // ヘルプモーダル
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+
   // 新しい状態変数
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
@@ -891,9 +894,13 @@ const CSVViewerApp = () => {
         }
       }
 
-      // Escapeキーでエラーをクリア
-      if (e.key === 'Escape' && error) {
-        setError(null);
+      // Escapeキーでエラーをクリア、またはヘルプモーダルを閉じる
+      if (e.key === 'Escape') {
+        if (isHelpModalOpen) {
+          setIsHelpModalOpen(false);
+        } else if (error) {
+          setError(null);
+        }
       }
 
       // Ctrl/Cmd + K でサンプルデータ
@@ -905,7 +912,7 @@ const CSVViewerApp = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [data, error, currentPage, rowsPerPage, filteredData, viewMode, exportJson, exportCsv, changePage, loadSampleData, getSortedData]);
+  }, [data, error, currentPage, rowsPerPage, filteredData, viewMode, exportJson, exportCsv, changePage, loadSampleData, getSortedData, isHelpModalOpen]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 overflow-hidden">
@@ -927,15 +934,26 @@ const CSVViewerApp = () => {
               </span>
             )}
           </div>
-          <button
-            onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            title={isHeaderCollapsed ? "ツールバーを展開" : "ツールバーを折りたたむ"}
-          >
-            <svg className={`w-5 h-5 text-gray-600 dark:text-gray-300 transition-transform ${isHeaderCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setIsHelpModalOpen(true)}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title="ヘルプを表示"
+            >
+              <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title={isHeaderCollapsed ? "ツールバーを展開" : "ツールバーを折りたたむ"}
+            >
+              <svg className={`w-5 h-5 text-gray-600 dark:text-gray-300 transition-transform ${isHeaderCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1513,73 +1531,118 @@ const CSVViewerApp = () => {
         </>
       )}
 
-      {/* ヘルプ情報 - コンパクト */}
+      {/* ヘルプ情報 - コンパクト (データなし時のみ表示) */}
       {!loading && data.length === 0 && !error && (
-        <div className="flex-1 overflow-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-bold text-blue-600 dark:text-blue-400">使い方</h2>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 max-w-md text-center">
+            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
-
-            <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
-              CSVファイルをアップロードするか、サンプルデータで機能をお試しください。
+            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">CSVファイルを選択</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              上部のアップロードエリアからCSVファイルを選択するか、<br />
+              サンプルデータで機能をお試しください。
             </p>
+            <button
+              onClick={() => setIsHelpModalOpen(true)}
+              className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              詳しい使い方を見る
+            </button>
+          </div>
+        </div>
+      )}
+      </div>
 
-            {/* 注意事項 */}
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">
-              <p className="text-xs text-amber-800 dark:text-amber-300">
-                <strong>注意:</strong> CSVファイルはUTF-8エンコーディング推奨。最大ファイルサイズ: 50MB
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-              {[
-                'テーブル/JSON表示',
-                '検索・フィルタ',
-                '列の選択・並替',
-                'ソート機能',
-                'CSV/JSON出力',
-                '全画面表示',
-                '列幅調整',
-                'ツールチップ'
-              ].map((feature, index) => (
-                <div key={index} className="flex items-center gap-1 p-2 bg-blue-50 dark:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300">
-                  <svg className="w-3 h-3 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      {/* ヘルプモーダル */}
+      {isHelpModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setIsHelpModalOpen(false)}>
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* モーダルヘッダー */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {feature}
                 </div>
-              ))}
+                <h2 className="text-lg font-bold text-blue-600 dark:text-blue-400">使い方</h2>
+              </div>
+              <button
+                onClick={() => setIsHelpModalOpen(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
 
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
-              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">キーボードショートカット</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+            {/* モーダルコンテンツ */}
+            <div className="p-4">
+              <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
+                CSVファイルをアップロードするか、サンプルデータで機能をお試しください。
+              </p>
+
+              {/* 注意事項 */}
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  <strong>注意:</strong> CSVファイルはUTF-8エンコーディング推奨。最大ファイルサイズ: 50MB
+                </p>
+              </div>
+
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">機能一覧</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
                 {[
-                  { keys: 'Ctrl+O', action: 'ファイルを開く' },
-                  { keys: 'Ctrl+F', action: '検索' },
-                  { keys: 'Ctrl+E', action: 'JSON出力' },
-                  { keys: 'Ctrl+S', action: 'CSV出力' },
-                  { keys: 'Ctrl+K', action: 'サンプル表示' },
-                  { keys: '←→', action: 'ページ移動' },
-                  { keys: 'Esc', action: 'エラーを閉じる' }
-                ].map((shortcut, index) => (
-                  <div key={index} className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                    <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-xs font-mono">{shortcut.keys}</kbd>
-                    <span>{shortcut.action}</span>
+                  'テーブル/JSON表示',
+                  '検索・フィルタ',
+                  '列の選択・並替',
+                  'ソート機能',
+                  'CSV/JSON出力',
+                  '全画面表示',
+                  '列幅調整',
+                  'ツールチップ'
+                ].map((feature, index) => (
+                  <div key={index} className="flex items-center gap-1 p-2 bg-blue-50 dark:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300">
+                    <svg className="w-3 h-3 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {feature}
                   </div>
                 ))}
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">キーボードショートカット</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                  {[
+                    { keys: 'Ctrl+O', action: 'ファイルを開く' },
+                    { keys: 'Ctrl+F', action: '検索' },
+                    { keys: 'Ctrl+E', action: 'JSON出力' },
+                    { keys: 'Ctrl+S', action: 'CSV出力' },
+                    { keys: 'Ctrl+K', action: 'サンプル表示' },
+                    { keys: '←→', action: 'ページ移動' },
+                    { keys: 'Esc', action: 'エラー/モーダルを閉じる' }
+                  ].map((shortcut, index) => (
+                    <div key={index} className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+                      <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-xs font-mono">{shortcut.keys}</kbd>
+                      <span>{shortcut.action}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 };
