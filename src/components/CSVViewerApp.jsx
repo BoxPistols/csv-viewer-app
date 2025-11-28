@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Papa from 'papaparse';
+import DarkModeToggle from './ui/DarkModeToggle';
 
 const CSVViewerApp = () => {
   // 状態管理
@@ -915,9 +916,9 @@ const CSVViewerApp = () => {
   }, [data, error, currentPage, rowsPerPage, filteredData, viewMode, exportJson, exportCsv, changePage, loadSampleData, getSortedData, isHelpModalOpen]);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 overflow-hidden">
+    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 p-2 sm:p-4">
       {/* コンパクトヘッダーバー - Excel風 */}
-      <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg">
         <div className="flex items-center justify-between px-3 py-2">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -934,7 +935,8 @@ const CSVViewerApp = () => {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <DarkModeToggle />
             <button
               onClick={() => setIsHelpModalOpen(true)}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -958,7 +960,7 @@ const CSVViewerApp = () => {
       </div>
 
       {/* メインコンテンツ */}
-      <div className="flex-1 overflow-hidden flex flex-col p-2 sm:p-3">
+      <div className="flex-1 overflow-auto flex flex-col mt-2">
 
       {/* ファイルアップロード - 折りたたみ可能なコンパクトセクション */}
       {!isHeaderCollapsed && (
